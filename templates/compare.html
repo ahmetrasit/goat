@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Compare Datasets{% endblock %}
+
+{% block center %}
+    <form action="/" method="post">
+        <input type="hidden" name="type" value="compare">
+        <input type="hidden" id="input_groupA" name="groupA" value="">
+        <input type="hidden" id="input_groupB" name="groupB" value="">
+
+        <div class="row">
+            <div class="col-md-5 datasets border overflow-auto" style="height: 7em;"></div>
+            <div class="col-md-2 border text-center">
+                <button type="button" class="btn-sm btn-warning p-1 m-1" onclick="addToGroupA()">>>> Group A</button>
+                <button type="button" class="btn-sm btn-info p-1 m-1" onclick="addToGroupB()">>>> Group B</button>
+            </div>
+            <div class="col-md-5 border">
+                <div class="border">
+                    <span class="h5">Group A</span> <input type="text" style="font-style: italic">
+                    <div id="groupA" class="p-1 border">Not selected</div>
+                </div>
+                <div class="border">
+                    <span class="h5">Group B</span> <input type="text" style="font-style: italic">
+                    <div id="groupB" class="p-1 border">Not selected</div>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn-sm btn-success p-1 m-1" onclick="addRuleGroup()">Add Rule Group</button>
+        <div class="rules"></div>
+        <div class="mt-3">Give a name to save<input type="text" name="save"></div>
+        <input type="submit">
+    </form>
+{% endblock %}
+{% block afterbody %}
+    <script>
+        let selected = null;
+        let groupA = null;
+        let groupB = null;
+        let ruleGroups = [];
+
+        function darken(){
+            d3.selectAll('.dataset').style('background', 'white')
+            d3.select('#'+this.id).style('background', 'lightgray')
+        }
+
+        function lighten(){
+            d3.selectAll('.dataset').style('background', 'white')
+        }
+
+        function choose(){
+            d3.selectAll('.dataset').style('font-weight', 'normal')
+            d3.select('#'+this.id).style('font-weight', 'bold')
+            selected = this.id
+        }
+
+        function addToGroupA(){
+            groupA = selected;
+            if(groupA != groupB){
+                selected = null;
+                let html = d3.select('#'+groupA).html()
+                let path = d3.select('#'+groupA).attr('path')
+                d3.select('#groupA').html(html).attr('path', path)
+                d3.select('#input_groupA').attr('value', path)
+                d3.selectAll('.dataset').style('font-weight', 'normal')
+                populateDatasetList(orig_data)
+            }
+        }
+
+        function addToGroupB(){
+            groupB = selected;
+            if(groupA != groupB) {
+                selected = null;
+                let html = d3.select('#' + groupB).html()
+                let path = d3.select('#' + groupB).attr('path')
+                d3.select('#groupB').html(html).attr('path', path)
+                d3.select('#input_groupB').attr('value', path)
+                d3.selectAll('.dataset').style('font-weight', 'normal')
+                populateDatasetList(orig_data)
+            }
+        }
+
+        function addRuleGroup(){
+            ruleGroups.push(0)
+            let latestGroupId = ruleGroups.length-1
+            let newGroup = d3.select('.rules').append('div')
+                .attr('id', 'ruleGroup_' + latestGroupId)
+                .attr('class', 'border pt-2 pb-2')
+            newGroup.append('div')
+                .html('<button type="button" class="btn-sm btn-info p-1 m-1" onclick="addRule('+latestGroupId+')">Add a Rule</button>')
+            newGroup.append('div')
+                .attr('id', 'rules_'+latestGroupId)
+
+        }
+
+        function addRule(group_id){
+            ruleGroups[group_id] = ruleGroups[group_id]+1
+            let rule_id = ruleGroups[group_id]
+            let curr_rule_identifier = ['rule', group_id, rule_id].join('_')
+
+            let newRule = d3.select('#rules_'+group_id).append('div').attr('class', 'row input-group m-1')
+                .attr('id', curr_rule_identifier)
+            //Adding rule structure
+            newRule.append('div').attr('id', 'data_select').attr('class', 'col-md-2').on('change', updateRuleInput)
+                .append('select').attr('class', 'form-control').selectAll('option').data(['A', 'B', 'A/B', 'B/A']).enter()
+                    .append('option').text(function(d,i){return d}).attr('value', function(d,i){return d})
+            newRule.append('div').attr('id', 'operator_select').attr('class', 'col-md-1').on('change', updateRuleInput)
+                .append('select').attr('class', 'form-control').selectAll('option').data(['<', '≤', '≥', '>', '=']).enter()
+                    .append('option').text(function(d,i){return d}).attr('value', function(d,i){return d})
+            newRule.append('div').attr('class', 'col-md-2').on('keyup', updateRuleInput)
+                .append('input').attr('value', 0).attr('id', 'data_input').attr('class', 'form-control')
+            newRule.append('div').attr('class', 'col-md-1')
+                //.html(['rule', group_id, rule_id].join('_'))
+            newRule.append('div').attr('class', 'col-md-3')
+                .html('<button type="button" class="btn btn-danger form-control" onclick="deleteRule(\'' + curr_rule_identifier + '\')">Delete Rule</button>')
+
+            d3.select('form').append('input')
+                .attr('type', 'hidden')
+                .attr('name', 'hidden_'+curr_rule_identifier)
+                .attr('id', 'hidden_'+curr_rule_identifier)
+                .attr('value', getRuleFromId(curr_rule_identifier))
+        }
+
+
+        function getRuleFromId(id){
+            let data_select = d3.select('#'+id).select('#data_select option:checked').text()
+            let operator_select = d3.select('#'+id).select('#operator_select option:checked').text()
+            let data_input = d3.select('#'+id).select('#data_input').property('value')
+            return [data_select, operator_select, data_input].join(';')
+
+        }
+
+        function deleteRule(rule_id){
+            console.log(rule_id)
+            d3.select('#'+rule_id).remove()
+            d3.select('#hidden_'+rule_id).remove()
+        }
+
+        function updateRuleInput(){
+            let rule_id = this.parentNode.id;
+            d3.select('#hidden_'+rule_id).remove();
+            d3.select('form').append('input')
+                .attr('type', 'hidden')
+                .attr('name', 'hidden_'+rule_id)
+                .attr('id', 'hidden_'+rule_id)
+                .attr('value', getRuleFromId(rule_id))
+
+        }
+
+    </script>
+    <script>
+        let orig_data = {{ data | safe}};
+        function populateDatasetList(data){
+            d3.select('.datasets').selectAll('div').remove();
+            d3.select('.datasets').selectAll('div').data(orig_data).enter()
+                .append('div')
+                    //.attr('class', 'dataset')
+                    .attr('id', function(d,i){return 'dataset_'+i})
+                    .on('mouseover', darken)
+                    .on('click', choose)
+                    .html(function(d){return d.split('/')[1]})
+                    .attr('path', function(d){return d})
+                    .attr('class', function(d,i){
+                        let curr_dataset = 'dataset_'+i
+                        if(curr_dataset==groupA || curr_dataset==groupB){
+                            return 'dataset selected text-muted';
+                        }else{
+                            return 'dataset';
+                        }
+                    })
+            d3.selectAll('div.selected').style('font-style', 'italic')
+        }
+
+        populateDatasetList(orig_data)
+    </script>
+
+{% endblock %}

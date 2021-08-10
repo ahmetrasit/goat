@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Bin to Genes{% endblock %}
+
+{% block center %}
+    <form action="/" method="post">
+        <input type="hidden" name="type" value="bin">
+
+        <div class="row">
+            <div class="col-md-12 pb-2">
+                <div class="input-group">
+                    <span class="input-group-text">Dataset</span>
+                    <select name="dataset" id="datasets_select" class="form-control"></select>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-check-inline col">
+                  <input class="form-check-input" type="checkbox" id="isTranscript" name="isTranscript">
+                  <label class="form-check-label" for="isTranscript">Has Transcripts</label>
+                </div>
+                <div class="form-check form-check-inline col">
+                  <input class="form-check-input" type="checkbox" id="hasSequence" name="hasSequence" checked>
+                  <label class="form-check-label" for="hasSequence">Has Sequences</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-check-inline col">
+                  <input class="form-check-input" type="checkbox" id="multi_mappers" name="multi_mappers">
+                  <label class="form-check-label" for="multi_mappers">Multi-mappers</label>
+                </div>
+                <div class="form-check form-check-inline col">
+                  <input class="form-check-input" type="checkbox" id="unique_mappers" name="unique_mappers">
+                  <label class="form-check-label" for="unique_mappers">Unique Mappers</label>
+                </div>
+            </div>
+
+            <div class="pt-4 pb-2">
+                <span class="h5 p-2">Gene types to filter with</span><span>(Leave unchecked for all gene types)</span>
+            </div>
+            <div class="gene_types col">
+            </div>
+            <div class="pt-4 pb-2">
+                <span class="h5 p-2">Gene sets to filter with</span><span>(Leave unchecked for all genes)</span>
+            </div>
+            <div class="gene_sets col">
+            </div>
+            <div class="col-md-12"></div>
+            <div class="col-md-6 pt-2">
+                <div class="input-group">
+                    <span class="input-group-text">Name for saving</span>
+                    <input type="text" name="save" class="form-control">
+                    <input type='submit' class="text-primary input-group-text">
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+{% block afterbody %}
+<script>
+    let data = {{ data | safe}};
+    let gene_sets = {{ gene_sets | safe }}
+
+    d3.select('#datasets_select').selectAll('option').data(data).enter()
+            .append('option').text(function(d){return d})
+
+
+    let gene_types = ['asRNA',
+                 'lincRNA',
+                 'miRNA',
+                 'ncRNA',
+                 'piRNA',
+                 'protein_coding',
+                 'pseudogene',
+                 'rRNA',
+                 'scRNA',
+                 'snRNA',
+                 'snoRNA',
+                 'tRNA',
+                 'transposon',
+                 'transposon_protein_coding',
+                 'transposon_pseudogene']
+
+    function populateCheckBoxList(classname, list){
+        let gene_type_divs = d3.select('.'+classname).selectAll('div').data(list).enter()
+            .append('div').attr('class', 'form-check form-check-inline col')
+        gene_type_divs.append('input')
+            .attr('class', 'form-check-input').attr('type', 'checkbox')
+            .attr('id', function(d,i){return d.toLowerCase()})
+            .attr('value', function(d,i){return d.toLowerCase()})
+            .attr('name', classname)
+        gene_type_divs.append('label').attr('class', 'form-check-label').html(function(d,i) {return d})
+    }
+
+    populateCheckBoxList('gene_types', gene_types)
+    populateCheckBoxList('gene_sets', gene_sets)
+
+
+</script>
+{% endblock %}

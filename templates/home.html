@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}GOAT{% endblock %}
+
+{% block center %}
+    <div class="row">
+        <div>
+            <a href="/filter">1. Filter Data</a>
+        </div><div>
+            <a href="/bin">2. Bin Filtered Data to Genes</a>
+        </div><div>
+            <a href="/compare">3. Compare 2 Datasets</a>
+        </div>
+    </div>
+    <div class="border">
+        {% for first, second in data %}
+            <div>{{ first | safe }}</div>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+
+{% block left %}{% endblock %}
+{% block right %}{% endblock %}
