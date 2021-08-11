@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}GOAT{% endblock %}
+
+{% block center %}
+    <form action="/align" method="post">
+        <div class="row">
+            <div class="input-group">
+                    <span class="input-group-text">Folder path</span>
+                    <input type="text" name="path" class="form-control">
+                    <input type='submit' class="text-primary input-group-text">
+                </div>
+            <input type="hidden" name="type" value="align">
+        </div>
+    </form>
+{% endblock %}
+
+
+{% block left %}{% endblock %}
+{% block right %}{% endblock %}

@@ -1,5 +1,13 @@
 from flask import Flask, render_template, request, flash
 from process import Process
+import subprocess
+import multiprocessing
+import time
+import gzip
+import shutil
+from TranscriptAnalysis import TranscriptAnalysis
+
+
 
 
 import os
@@ -84,3 +92,87 @@ def compare():
 def annotate():
     file_list = getFileList()
     return render_template('annotate.html', data=file_list)
+
+
+@app.route("/align", methods=['GET', 'POST'])
+def align():
+    if request.method == 'POST':
+        print(request.form['path'])
+        bowtie2(request.form['path'])
+        flash('Alignment process started!')
+    return render_template('preprocess.html')
+
+
+def createDir(folder):
+    try:
+        os.mkdir(folder)
+    except Exception as e:
+        print(f'folder already exists: {e}, {folder}')
+
+def bowtie2(folder):
+    process_dict = {}
+    print('>>>Bowtie', folder)
+    sam_folder = os.path.join(folder,'sam')
+    split_folder = os.path.join(folder, 'split')
+    createDir(sam_folder)
+    createDir(split_folder)
+
+    for file in os.listdir(folder):
+        if file.endswith('.fa'):
+            file_path = os.path.join(folder, file)
+            sam_path = os.path.join(sam_folder, file)
+            process_dict[file] = ['bowtie2', f'-a -f -x mappers/merged.ws274 -U {file_path} | grep', "-v '^@'",
+                                  f'> {sam_path}.sam']
+
+    p = multiprocessing.Process(target=processController, args=(process_dict, sam_folder, split_folder))
+    p.start()
+
+def processController(process_dict, output_folder, split_folder):
+    print('inside process controller')
+    q = multiprocessing.Queue()
+    global_start = time.time()
+    alignment_report = {}
+    proc_list = []
+    for fi, file in enumerate(process_dict):
+        proc_list.append([f'{fi}/{len(process_dict)}', file, process_dict[file], output_folder, split_folder])
+        #alignment_report[file] = handlePreProcessing(file, process_dict[file], output_folder, split_folder)
+    pool = multiprocessing.Pool(os.cpu_count()//2)
+    report = pool.map(func=handlePreProcessing, iterable=proc_list, chunksize=1)
+    pool.close()
+    pool.join()
+    for file, output in report:
+        alignment_report[file] = output
+
+    with open(os.path.join(output_folder, 'alignment_report.json'), 'w') as f:
+        json.dump(alignment_report, f)
+    print('finished with alignment', f'{int(time.time() - global_start)} sec elapsed')
+
+
+
+def handlePreProcessing(args):
+    fi, file, cmd, output_folder, split_folder = args
+    start = time.time()
+    print(f'{file} ({fi})', 'starting..')
+    sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = sp.communicate()
+    print(f'{file} ({fi})', 'bowtie2', f'{int(time.time() - start)} sec elapsed')
+    sam_file = os.path.join(output_folder, f'{file}.sam')
+    ta = TranscriptAnalysis(sam_file)
+    seq2genes, gene2seq, seq2count, unique, multi = ta.run()
+    print(f'{file} ({fi})', 'ta.run()', f'{int(time.time() - start)} sec elapsed')
+    gene2total_ppm, seq2ppm, total_read_count = ta.calculateWith['everything'](gene2seq, seq2genes, seq2count, multi)
+    norm_gene2total_ppm, norm_seq2ppm = ta.normalizeBy['everything'](gene2total_ppm, seq2ppm)
+    ta.splitNormalizedSample(gene2seq, norm_seq2ppm, os.path.join(split_folder, file.replace('.fa', '')))
+    print(f'{file} ({fi})', 'finished', f'{int(time.time() - start)} sec elapsed')
+    compressFile(sam_file)
+    print(f'{sam_file} compressed')
+    return file, err.decode("utf-8").split('\n')
+
+
+def compressFile(file):
+    subprocess.Popen(['gzip', f'{file}'])
+    return True
+    with open(file, 'rb') as f_in:
+        with gzip.open(f'{file}.gz', 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+

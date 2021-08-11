@@ -3,9 +3,6 @@
 
 {% block center %}
     <form action="/" method="post">
-
-
-
         <div class="row">
             <div class="col-md-12 pb-2">
                 <div class="input-group">
@@ -66,7 +63,7 @@
         </div>
         <div class="row">
             <div class="col-md-6 rules_seq"></div>
-            <div class="col-md-6 rules_gene"></div>
+            <div class="col-md-6 rules_gene card"></div>
         </div>
 
         <div class="col-md-6 pb-2">
@@ -88,10 +85,10 @@
             let latestGroupId = ruleGroups.length-1
             let newGroup = d3.select('.rules_seq').append('div')
                 .attr('id', 'ruleGroup_' + latestGroupId)
-                .attr('class', 'border pt-2 pb-2')
+                .attr('class', 'pt-1 mb-1 card')
             newGroup.append('div')
                 .html('<button type="button" class="btn-sm btn-info p-1 m-1" onclick="addSeqRule('+latestGroupId+')">Add a Sequence Rule</button>')
-            newGroup.append('div')
+            newGroup.append('div').attr('class', 'card-body')
                 .attr('id', 'rules_'+latestGroupId)
 
         }
@@ -100,10 +97,10 @@
             let latestGroupId = ruleGroups.length-1
             let newGroup = d3.select('.rules_gene').append('div')
                 .attr('id', 'ruleGroup_' + latestGroupId)
-                .attr('class', 'border pt-2 pb-2')
+                .attr('class', 'pt-1 mb-1 card')
             newGroup.append('div')
-                .html('<button type="button" class="btn-sm btn-info p-1 m-1" onclick="addGeneRule('+latestGroupId+')">Add a Gene Rule</button>')
-            newGroup.append('div')
+                .html('<span type="button" class="btn-sm btn-info p-1 m-1" onclick="addGeneRule('+latestGroupId+')">Add a Gene Rule</span>')
+            newGroup.append('div').attr('class', 'card-body')
                 .attr('id', 'rules_'+latestGroupId)
 
         }
@@ -114,14 +111,18 @@
             let curr_rule_identifier = ['rule', group_id, rule_id].join('_')
 
             let newRule = d3.select('#rules_'+group_id)
-                .append('div').attr('class', 'input-group')
+                .append('div').attr('class', 'input-group pb-1')
                 .attr('id', curr_rule_identifier).on('keyup', updateRuleInput).on('change', updateRuleInput)
             //Adding rule structure
             newRule.append('span').attr('class', 'input-group-text col-md-5').html('ppm/count')
             newRule.append('select').attr('id', 'option_select').attr('class', 'form-control col-md-2').selectAll('option').data(['<', '≤', '≥', '>', '=']).enter()
                 .append('option').text(function(d,i){return d}).attr('value', function(d,i){return d})
             newRule.append('input').attr('value', 0).attr('id', 'data_input').attr('class', 'form-control col-md-2')
-            newRule.append('button').attr('class', 'form-control').attr('type', 'button').attr('class','btn btn-danger col-md-3').attr('onclick', "deleteRule('" + curr_rule_identifier + "')").html('Delete')
+            newRule.append('span')
+                .style('font-size', '.8em')
+                .attr('class','btn btn-danger col-md-3 form-control')
+                .attr('onclick', "deleteRule('" + curr_rule_identifier + "')")
+                .html('Delete')
 
             d3.select('form').append('input')
                 .attr('type', 'hidden')
@@ -144,7 +145,11 @@
             newRule.append('input').attr('value', 0).attr('id', 'data_input').attr('class', 'form-control col-md-1')
             newRule.append('span').attr('class', 'input-group-text col-md-6')
                 .style('font-size', '.8em').text('% of sequences within a gene')
-            newRule.append('span').attr('class','btn btn-danger col-md-3 form-control').attr('onclick', "deleteRule('" + curr_rule_identifier + "')").html('Delete')
+            newRule.append('span')
+                .style('font-size', '.8em')
+                .attr('class','btn btn-danger col-md-3 form-control')
+                .attr('onclick', "deleteRule('" + curr_rule_identifier + "')")
+                .html('Delete')
 
             console.log(curr_rule_identifier)
             d3.select('form').append('input')
