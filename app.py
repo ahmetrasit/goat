@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, flash
+from flask import Flask, render_template, request, flash, jsonify
 from process import Process
 import subprocess
 import multiprocessing
@@ -94,11 +94,25 @@ def annotate():
     return render_template('annotate.html', data=file_list)
 
 
+@app.route("/getlist")
+def getlist():
+    path = request.args.get('path')
+    if os.path.isdir(path):
+        file_type = request.args.get('file_type')
+        if file_type in ['.fastq.gz', '.fa']:
+            files = [file for file in os.listdir(path) if file.endswith(file_type)]
+            print(files)
+            return jsonify(files)
+    else:
+        return jsonify([])
+
+
 @app.route("/align", methods=['GET', 'POST'])
 def align():
     if request.method == 'POST':
         print(request.form['path'])
-        bowtie2(request.form['path'])
+        return request.form
+        #bowtie2(request.form['path'])
         flash('Alignment process started!')
     return render_template('preprocess.html')
 
@@ -165,14 +179,12 @@ def handlePreProcessing(args):
     ta.splitNormalizedSample(gene2seq, norm_seq2ppm, os.path.join(split_folder, file.replace('.fa', '')))
     print(f'{file} ({fi})', 'finished', f'{int(time.time() - start)} sec elapsed')
     compressFile(sam_file)
-    print(f'{sam_file} compressed')
     return file, err.decode("utf-8").split('\n')
 
 
 def compressFile(file):
-    subprocess.Popen(['gzip', f'{file}'])
-    return True
-    with open(file, 'rb') as f_in:
-        with gzip.open(f'{file}.gz', 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
+    try:
+        subprocess.Popen(['gzip', f'{file}'])
+    except Exception as e:
+        print(f'Error gzipping {file}: {e}')
 

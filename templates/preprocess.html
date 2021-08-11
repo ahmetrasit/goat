@@ -3,13 +3,32 @@
 
 {% block center %}
     <form action="/align" method="post">
+        <input type="hidden" name="type" value="align">
         <div class="row">
-            <div class="input-group">
+            <div class="col-md-12 border">
+                <div class="input-group">
                     <span class="input-group-text">Folder path</span>
-                    <input type="text" name="path" class="form-control">
-                    <input type='submit' class="text-primary input-group-text">
+                    <input type="text" id="path" name="path" class="form-control">
+                    <span  class="text-primary input-group-text" onclick="populateFileList()">Get File List</span>
                 </div>
-            <input type="hidden" name="type" value="align">
+            </div>
+            <div class="col-md-12 border filelist">
+            </div>
+            <div class=" row pb-3">
+                <div class="col-md-4">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="use_counts_fa" name="use_counts_fa" onchange="toggleAdapterSequence()">
+                      <label class="form-check-label" for="use_counts_fa">Contine with counts.fa</label>
+                    </div>
+                </div>
+                <div class="col-md-8 adapter_sequence">
+                    <div class="input-group ">
+                        <span class="input-group-text">Adapter Sequence</span>
+                        <input type="text" name="path" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-success form-control">Submit</button>
         </div>
     </form>
 {% endblock %}
@@ -17,3 +36,51 @@
 
 {% block left %}{% endblock %}
 {% block right %}{% endblock %}
+
+{% block afterbody %}
+    <script>
+        function toggleAdapterSequence(){
+            if(document.getElementById('use_counts_fa').checked){
+                d3.select('.adapter_sequence').style('display', 'none')
+            }else{
+                d3.select('.adapter_sequence').style('display', 'inline')
+            }
+            populateFileList()
+        }
+
+        function populateFileList(){
+            let path = document.getElementById('path').value
+            let file_type = '.fastq.gz'
+            if(document.getElementById('use_counts_fa').checked){
+                file_type = '.fa'}
+            let url = '/getlist?path=' + path + '&file_type=' + file_type
+            d3.json(url, function(d){
+
+            }).then(function(d){
+                d3.select('.filelist').selectAll('div').remove()
+                if(d.length > 0){
+                    let file_divs = d3.select('.filelist').selectAll('div').data(d).enter()
+                        .append('div').attr('class', 'row')
+                            .append('div').attr('class', 'input-group')
+                    file_divs.append('span')
+                        .attr('class', 'input-group-text col-md-8')
+                        .text(function(d,i){return d})
+                    file_divs.append('input')
+                        .attr('class', 'form-control')
+                        .attr('id', function(d,i){return 'alias_'+i})
+                        .attr('name', function(d,i){return 'alias_'+i})
+                        .attr('value', function(d,i){return d.split('.')[0]})
+                    file_divs.append('input')
+                        .attr('type', 'hidden')
+                        .attr('name', function(d,i){return 'filename_'+i})
+                        .attr('value', function(d,i){return d})
+
+                }else{
+                    alert('No specified type of files in the folder')
+                }
+
+            })
+        }
+    </script>
+
+{% endblock %}
