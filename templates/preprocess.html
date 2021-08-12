@@ -5,26 +5,34 @@
     <form action="/align" method="post">
         <input type="hidden" name="type" value="align">
         <div class="row">
-            <div class="col-md-12 border">
+            <div class="col-md-12 border p-2">
                 <div class="input-group">
                     <span class="input-group-text">Folder path</span>
                     <input type="text" id="path" name="path" class="form-control">
                     <span  class="text-primary input-group-text" onclick="populateFileList()">Get File List</span>
                 </div>
             </div>
-            <div class="col-md-12 border filelist">
+            <div class="col-md-12 border filelist p-2">
             </div>
-            <div class=" row pb-3">
-                <div class="col-md-4">
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="checkbox" id="use_counts_fa" name="use_counts_fa" onchange="toggleAdapterSequence()">
-                      <label class="form-check-label" for="use_counts_fa">Contine with counts.fa</label>
+            <div class="col-md-12 p-2">
+                <div class="row border">
+                    <div class="col-md-4">
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input" type="checkbox" id="use_counts_fa" name="use_counts_fa" onchange="toggleCutadaptParameters()">
+                          <label class="form-check-label" for="use_counts_fa">Contine with counts.fa</label>
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-8 adapter_sequence">
-                    <div class="input-group ">
-                        <span class="input-group-text">Adapter Sequence</span>
-                        <input type="text" name="path" class="form-control">
+                    <div class="col-md-5 cutadapt_parameters">
+                        <div class="input-group">
+                            <span class="input-group-text" style="font-size:.9em;">Adapter Sequence</span>
+                            <input type="text" name="path" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3 cutadapt_parameters">
+                        <div class="input-group">
+                            <span class="input-group-text" style="font-size:.9em;">Min length</span>
+                            <input type="text" name="min_seq_len" class="form-control">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -39,11 +47,11 @@
 
 {% block afterbody %}
     <script>
-        function toggleAdapterSequence(){
+        function toggleCutadaptParameters(){
             if(document.getElementById('use_counts_fa').checked){
-                d3.select('.adapter_sequence').style('display', 'none')
+                d3.selectAll('.cutadapt_parameters').style('display', 'none')
             }else{
-                d3.select('.adapter_sequence').style('display', 'inline')
+                d3.selectAll('.cutadapt_parameters').style('display', 'inline')
             }
             populateFileList()
         }
