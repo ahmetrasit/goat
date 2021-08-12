@@ -2,100 +2,13 @@ import json
 import os
 from markupsafe import escape
 import html
+import re
 
 class Process:
     def __init__(self):
         print('ready')
 
     def filterData(self, formdata):
-        def furtherFilter(data, options):
-            def passedSeqRules(seq, count, rules):
-                if not rules:
-                    return seq
-                for rule in rules:
-                    ref_value = float(rule[1])
-                    operator = {'>': float(count) > ref_value,
-                                '<': float(count) < ref_value,
-                                '=': float(count) == ref_value,
-                                '≥': float(count) >= ref_value,
-                                '≤': float(count) <= ref_value
-                                }
-                    return operator[rule[0]]
-
-            def passedGeneRules(seq_dict, rules):
-                if not rules:
-                    return seq_dict
-                passed = set([])
-                run_count = 0
-                for rule in rules:
-                    sorted_seq_list = sorted(seq_dict, key=seq_dict.get)
-                    ratio = float(rule[1])/100
-                    levels = {'Top':sorted_seq_list[::-1][:int(len(sorted_seq_list)*ratio)+1],
-                              'Bottom': sorted_seq_list[:int(len(sorted_seq_list)*ratio)+1]
-                            }
-                    curr_passed = set(levels[rule[0]])
-                    if run_count == 0:
-                        passed = curr_passed
-                    else:
-                        passed = passed & curr_passed
-                    run_count += 1
-                return {curr_seq:seq_dict[curr_seq] for curr_seq in passed}
-
-            def parseRules(options):
-                gene_rules = []
-                seq_rules = []
-                for group_id in options['rules']:
-                    for rule in options['rules'][group_id]:
-                        if 'Top' in rule[0] or 'Bottom' in rule[0]:
-                            gene_rules.append(rule)
-                        else:
-                            seq_rules.append(rule)
-                return seq_rules, gene_rules
-
-
-            filtered = {}
-            initial_gene_len = len(data)
-            seq_rules, gene_rules = parseRules(options)
-
-            for gene in data:
-                passed_seq_rules = {}
-                seq_dict = {**data[gene]['u'], **data[gene]['m']} if 'u' in data[gene] else data[gene]
-                for seq in seq_dict:
-                    count = seq_dict[seq]
-                    if 'nts' in options:
-                        if seq[0] in options['nts'] and options['len_end'] >= len(seq) >= options['len_start']:
-                            if passedSeqRules(seq, count, seq_rules):
-                                passed_seq_rules[seq] = count
-                passed_gene_rules = passedGeneRules(passed_seq_rules, gene_rules)
-                filtered[gene] = passed_gene_rules
-            print(f'{len(filtered)}/{initial_gene_len} genes filtered using rules')
-            return filtered
-
-
-        def filterFile(file, data, options):
-            with open(file) as f:
-                curr_data = json.load(f)
-                for gene in curr_data:
-                    if strand in curr_data[gene]:
-                        u_data = curr_data[gene][strand]['u']
-                        m_data = {}
-                        for multi_type in curr_data[gene][strand]['m']:
-                            m_data = {**m_data, **curr_data[gene][strand]['m'][multi_type]}
-                    else:
-                        u_data = curr_data[gene]['u']
-                        m_data = curr_data[gene]['m']
-                    curr_gene_data = {'u': u_data, 'm': m_data}
-
-
-                    if len(u_data) > 0 and len(m_data) > 0:
-                        if gene in data:
-                            for mapper in 'um':
-                                data[gene][mapper] = {**data[gene][mapper], **curr_gene_data[mapper]}
-                        else:
-                            data[gene] = curr_gene_data
-
-            return data, 'Success'
-
         sample = formdata['dataset'].split('/')[-1]
         len_start = int(formdata['length_start'])
         len_end = int(formdata['length_end'])
@@ -114,26 +27,145 @@ class Process:
 
         message = ''
         if sample.endswith('json'):
-            options = {'nts': nts, 'len_start': len_start, 'len_end': len_end, 'rules': rules}
-            data, message = filterFile(f'data/{formdata["dataset"]}', {}, options)
+            options = {'nts': nts, 'len_start': len_start, 'len_end': len_end}
+            data, message = self.filterJsonFile(f'data/{formdata["dataset"]}', {}, options)
         else:
             options = {'rules': rules}
             data = {}
             for nt in nts:
                 for length in range(len_start, len_end + 1):
                     file = f'data/{formdata["dataset"]}/{length}{nt}.json'
-                    data, message = filterFile(file, data, options)
+                    data, message = self.filterFileBundle(file, data, strand)
 
-        data = furtherFilter(data, options)
+        data = self.furtherFilter(data, rules)
+        data = self.removeEmptyGenes(data)
 
-        len_interval = len_start if len_start == len_end else f'{len_start}-{len_end}'
-        strand_long = {'a': 'asense', 's': 'sense'}[strand]
+        if data:
+            len_interval = len_start if len_start == len_end else f'{len_start}-{len_end}'
+            strand_long = {'a': 'asense', 's': 'sense'}[strand]
 
-        save_filename = escape(formdata['save']).replace('\s', '_')
-        filename = f'data/filtered/{save_filename}_{sample.replace(".json", "")}_{len_interval}{nts}_{strand_long}.json'
-        saved_filename = self.saveFile(filename, data)
+            save_filename = escape(formdata['save']).replace('\s', '_')
+            filename = f'data/filtered/{save_filename}_{sample.replace(".json", "")}_{len_interval}{nts}_{strand_long}.json'
+            saved_filename = self.saveFile(filename, data)
 
-        return data, f'Saved as {saved_filename}'
+            return data, f'Saved as {saved_filename}'
+        else:
+            return [], 'Nothing found, file is not created!'
+
+    def speciesFilter(self, seq_dict, options):
+        filtered = {}
+        for seq in seq_dict:
+            if seq[0] in options['nts'] and options['len_end'] >= len(seq) >= options['len_start']:
+                filtered[seq] = seq_dict[seq]
+        return filtered
+
+    def filterJsonFile(self, file, data, options):
+        with open(file) as f:
+            curr_data = json.load(f)
+            for gene in curr_data:
+                u_data = self.speciesFilter(curr_data[gene]['u'], options)
+                m_data = self.speciesFilter(curr_data[gene]['m'], options)
+                curr_gene_data = {'u': u_data, 'm': m_data}
+
+                if len(u_data) > 0 and len(m_data) > 0:
+                    if gene in data:
+                        for mapper in 'um':
+                            data[gene][mapper] = {**data[gene][mapper], **curr_gene_data[mapper]}
+                    else:
+                        data[gene] = curr_gene_data
+
+        return data, 'Success'
+
+
+    def filterFileBundle(self, file, data, strand):
+        with open(file) as f:
+            curr_data = json.load(f)
+            for gene in curr_data:
+                u_data = curr_data[gene][strand]['u']
+                m_data = {}
+                for multi_type in curr_data[gene][strand]['m']:
+                    m_data = {**m_data, **curr_data[gene][strand]['m'][multi_type]}
+
+                curr_gene_data = {'u': u_data, 'm': m_data}
+
+                if len(u_data) > 0 and len(m_data) > 0:
+                    if gene in data:
+                        for mapper in 'um':
+                            data[gene][mapper] = {**data[gene][mapper], **curr_gene_data[mapper]}
+                    else:
+                        data[gene] = curr_gene_data
+
+        return data, 'Success'
+
+
+    #####################
+    ### FurtherFilter ###
+    def furtherFilter(self, data, rules):
+        filtered = {}
+        initial_gene_len = len(data)
+        seq_rules, gene_rules = self.parseRules(rules)
+
+        for gene in data:
+            passed_seq_rules = {}
+            seq_dict = {**data[gene]['u'], **data[gene]['m']} if 'u' in data[gene] else data[gene]
+            for seq in seq_dict:
+                count = seq_dict[seq]
+                if self.passedSeqRules(seq, count, seq_rules):
+                    passed_seq_rules[seq] = count
+            passed_gene_rules = self.passedGeneRules(passed_seq_rules, gene_rules)
+            filtered[gene] = passed_gene_rules
+        print(f'{len(filtered)}/{initial_gene_len} genes filtered using rules')
+        return filtered
+
+    def passedSeqRules(self, seq, count, rules):
+        if not rules:
+            return seq
+        for rule in rules:
+            ref_value = float(rule[1])
+            operator = {'>': float(count) > ref_value,
+                        '<': float(count) < ref_value,
+                        '=': float(count) == ref_value,
+                        '≥': float(count) >= ref_value,
+                        '≤': float(count) <= ref_value
+                        }
+            return operator[rule[0]]
+
+    def passedGeneRules(self, seq_dict, rules):
+        if not rules:
+            return seq_dict
+        passed = set([])
+        run_count = 0
+        for rule in rules:
+            sorted_seq_list = sorted(seq_dict, key=seq_dict.get)
+            ratio = float(rule[1]) / 100
+            levels = {'Top': sorted_seq_list[::-1][:int(len(sorted_seq_list) * ratio) + 1],
+                      'Bottom': sorted_seq_list[:int(len(sorted_seq_list) * ratio) + 1]
+                      }
+            curr_passed = set(levels[rule[0]])
+            if run_count == 0:
+                passed = curr_passed
+            else:
+                passed = passed & curr_passed
+            run_count += 1
+        return {curr_seq: seq_dict[curr_seq] for curr_seq in passed}
+
+    def parseRules(self, rules):
+        gene_rules = []
+        seq_rules = []
+        for group_id in rules:
+            for rule in rules[group_id]:
+                if 'Top' in rule[0] or 'Bottom' in rule[0]:
+                    gene_rules.append(rule)
+                else:
+                    seq_rules.append(rule)
+        return seq_rules, gene_rules
+
+    def removeEmptyGenes(self, data):
+        cleaned_data = {}
+        for gene in data:
+            if data[gene]:
+                cleaned_data[gene] = data[gene]
+        return cleaned_data
 
     def binData(self, formdata):
         mappers = ''
@@ -142,8 +174,6 @@ class Process:
         mappers = 'um' if mappers=='' else mappers
         gene_sets =  formdata.getlist('gene_sets')
         gene_types = formdata.getlist('gene_types')
-        print('>GS', gene_sets)
-        print('>GT', gene_types)
 
         has_sequence = True if 'hasSequence' in formdata else False
         is_transcript = True if 'isTranscript' in formdata else False
@@ -193,12 +223,15 @@ class Process:
         else:
             passing_gene_set_filter = passing_gene_type_filter
 
+        stats = f'Started with {len(binned_gene_set)} genes, {perc_common}% of them can be mapped. {len(passing_gene_type_filter)} genes passed gene type filter. {len(passing_gene_set_filter)} genes passed gene set filter.'
+        if passing_gene_set_filter:
+            filename = f'data/binned/{save_filename}_{sample.replace(".json", "")}_{mappers}_binned.json'
+            data = {gene:binned[gene] for gene in passing_gene_set_filter}
+            saved_filename = self.saveFile(filename, data)
 
-        filename = f'data/binned/{save_filename}_{sample.replace(".json", "")}_{mappers}_binned.json'
-        saved_filename = self.saveFile(filename, binned)
-
-        message = f'Started with {len(binned_gene_set)} genes, {perc_common}% of them can be mapped. {len(passing_gene_type_filter)} genes passed gene type filter. {len(passing_gene_set_filter)} genes passed gene set filter. Saved as {saved_filename}'
-        return binned, message
+            return passing_gene_set_filter, stats + f' Saved as {saved_filename}'
+        else:
+            return [], stats + ' No file created.'
 
 
     def compareDataset(self, formdata):
@@ -293,19 +326,12 @@ class Process:
 
     def filterByGeneSets(self, gene_set, id_type, selected_gene_sets, id_sets):
         genes_in_selected_sets = set([])
-        print('!!!')
         for selected in selected_gene_sets:
             with open(f'data/genelist/{selected}.json') as f:
                 curr_data = json.load(f)
-                print(len(curr_data))
                 curr_id_type, perc_common = self.getIdType(id_sets, curr_data)
-                print(curr_id_type,id_type, perc_common)
                 converted_ids = self.convert(curr_data, curr_id_type, id_type) if curr_id_type != id_type else set(curr_data)
                 genes_in_selected_sets |= converted_ids
-                print('!>', perc_common, 100*len(converted_ids)//len(curr_data))
-        print(len(genes_in_selected_sets), list(genes_in_selected_sets)[:10])
-        print(len(gene_set), list(gene_set)[:10])
-        print(set([curr[:3] for curr in genes_in_selected_sets]))
 
         return set(gene_set) & genes_in_selected_sets
 
@@ -317,11 +343,22 @@ class Process:
 
 
     def saveFile(self, filename, data):
-        while os.path.isfile(filename):
-            filename = filename.split('.json')[0]
-            filename += '_1'
-            filename += '.json'
-
-        with open(filename, 'w') as f:
+        print(filename)
+        filename = re.sub('.json$', '', filename)
+        *folder_fields, file = filename.split('/')
+        folder = os.path.join(*folder_fields)
+        file = escape(file)
+        file = re.sub(r'[^\w\s-]', '', file.lower())
+        file = re.sub(r'[-\s]+', '-', file).strip('-_')
+        print(file)
+        file_path = os.path.join(folder, file) + '.json'
+        print('>FP', file_path)
+        while os.path.isfile(file_path):
+            file = re.sub('.json$', '', file)
+            file += '_1'
+            file += '.json'
+            file_path = os.path.join(folder, file)
+        print('>FP2', file_path)
+        with open(file_path, 'w') as f:
             json.dump(data, f)
-        return filename.split('/')[-1]
+        return f'{file}'

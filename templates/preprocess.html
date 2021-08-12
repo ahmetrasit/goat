@@ -2,14 +2,20 @@
 {% block title %}GOAT{% endblock %}
 
 {% block center %}
-    <form action="/align" method="post">
-        <input type="hidden" name="type" value="align">
+    <form action="/" method="post">
+        <input type="hidden" name="type" value="preprocess">
         <div class="row">
-            <div class="col-md-12 border p-2">
+            <div class="col-md-7 p-2">
                 <div class="input-group">
                     <span class="input-group-text">Folder path</span>
                     <input type="text" id="path" name="path" class="form-control">
                     <span  class="text-primary input-group-text" onclick="populateFileList()">Get File List</span>
+                </div>
+            </div>
+            <div class="col-md-5 p-2">
+                <div class="input-group">
+                    <span class="input-group-text" style="font-size:.8em;">Experiment Name</span>
+                    <input type="text" id="experiment_name" name="experiment_name" class="form-control">
                 </div>
             </div>
             <div class="col-md-12 border filelist p-2">
@@ -25,13 +31,13 @@
                     <div class="col-md-5 cutadapt_parameters">
                         <div class="input-group">
                             <span class="input-group-text" style="font-size:.9em;">Adapter Sequence</span>
-                            <input type="text" name="path" class="form-control">
+                            <input type="text" name="adapter_seq" class="form-control" value="AGATCGGAAGAGCAC">
                         </div>
                     </div>
                     <div class="col-md-3 cutadapt_parameters">
                         <div class="input-group">
                             <span class="input-group-text" style="font-size:.9em;">Min length</span>
-                            <input type="text" name="min_seq_len" class="form-control">
+                            <input type="text" name="min_seq_len" class="form-control" value="14">
                         </div>
                     </div>
                 </div>
