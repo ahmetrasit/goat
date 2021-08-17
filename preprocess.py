@@ -43,17 +43,79 @@ class Preprocess:
                 print('>>>>counts')
                 self.align(path, exp_folder, file2alias, exp_name)
             else:
+                print('time for JBrowser')
                 adapter_seq = formdata['adapter_seq']
                 min_seq_len = formdata['min_seq_len']
+                self.jbrowse_prep(path, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len)
             return formdata, ''
         else:
             return '', 'No files found in the path'
 
 
+    def jbrowse_prep(self, data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len):
+        p = multiprocessing.Process(target=self.doJBrowseProcessing,
+                                    args=(data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len))
+        p.start()
+
+
+    def doJBrowseProcessing(self, data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len):
+        #a separate main function for jbrowse processing
+        folders = {'data_folder':data_folder, 'exp_folder':exp_folder}
+        folders['trimmed_folder'] = self.createDir(os.path.join(exp_folder, 'trimmed'))
+        folders['jbrowse_folder'] = self.createDir(os.path.join(exp_folder, 'jbrowse_data'))
+        folders['counts_folder'] = self.createDir(os.path.join(exp_folder, 'counts'))
+
+        proc_list = []
+        fastq_gz_files = [file for file in os.listdir(data_folder) if file.endswith('.fastq.gz')]
+        for fi, file in enumerate(fastq_gz_files):
+            if file.endswith('.fastq.gz'):
+                proc_list.append([f'{fi}/{len(fastq_gz_files)}', file, folders, file2alias, exp_name, adapter_seq, min_seq_len])
+        pool = multiprocessing.Pool(os.cpu_count() // 2)
+        report = pool.map(func=self.singleFileJBrowse, iterable=proc_list, chunksize=1)
+        pool.close()
+        pool.join()
+
+        jbrowse_report = {}
+        for file, output in report:
+            jbrowse_report[file] = output
+
+    def singleFileJBrowse(self, args):
+        fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len = args
+        ca_out, ca_err = self.cutadaptSamples(fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len)
+        #self.createBamBigWig(fi, file, folders, file2alias)
+        cc_out, cc_err = self.createCountsFa(fi, file, folders, file2alias)
+        #self.align(fi, file, folders, file2alias, exp_name)
+        return file, [[ca_out, ca_err], [cc_out, cc_err]]
+
+    def createCountsFa(self, fi, file, folders, file2alias):
+        trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
+        counts_file_prefix = os.path.join(folders['counts_folder'], file2alias[file])
+        counts_fa_prep_cmd = ["scripts/create_counts_fa.sh", counts_file_prefix, trimmed_file_path]
+        sp = subprocess.Popen(counts_fa_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = sp.communicate()
+        return str(out).split('\n'), str(err).split('\n')
+
+
+    def createBamBigWig(self, fi, file, folders, file2alias):
+        trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
+        jbrowse_file_prefix = os.path.join(folders['jbrowse_folder'], file2alias[file])
+        jupyter_prep_cmd = ["scripts/jupyter_prep.sh", jbrowse_file_prefix, trimmed_file_path, 'mappers/genome', '~/ucsc-tools']
+        sp = subprocess.Popen(jupyter_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = sp.communicate()
+        return str(out).split('\n'), str(err).split('\n')
+
+    def cutadaptSamples(self, fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len):
+        #do not use multithreading, it may clog when multiple users submit jobs, and I'm already using cpu/2
+        trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
+        fastq_file_path = os.path.join(folders['data_folder'], file)
+        cutadapt_cmd = ["cutadapt", "-a", adapter_seq, "-m", min_seq_len, "-o", trimmed_file_path, fastq_file_path]
+        sp = subprocess.Popen(cutadapt_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = sp.communicate()
+        return str(out).split('\n'), str(err).split('\n')
 
     def align(self, data_folder, exp_folder, file2alias, exp_name):
         process_dict = {}
-        print('>>>Bowtie', data_folder)
+        #print('>>>Bowtie', data_folder)
         sam_folder = os.path.join(exp_folder, 'sam')
         split_folder = os.path.join(exp_folder, 'split')
         self.createDir(sam_folder)
@@ -70,7 +132,7 @@ class Preprocess:
         p.start()
 
     def processController(self, process_dict, output_folder, split_folder, file2alias, exp_name):
-        print('inside process controller')
+        #print('inside process controller')
         q = multiprocessing.Queue()
         global_start = time.time()
         alignment_report = {}
@@ -127,5 +189,6 @@ class Preprocess:
         try:
             os.mkdir(folder)
         except Exception as e:
-            print(f'folder already exists: {e}, {folder}')
+            #print(f'folder already exists: {e}, {folder}')
+            pass
         return folder

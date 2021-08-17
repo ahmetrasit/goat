@@ -47,7 +47,7 @@ def getGeneSets():
         gene_set_list = [file.replace('.json', '') for file in os.listdir('./data/genelist') if file.endswith('json')]
         return gene_set_list
     except Exception as e:
-        print(f'Error getting gene sets: {e}')
+        #print(f'Error getting gene sets: {e}')
         return []
 
 
@@ -118,7 +118,7 @@ def getlist():
         file_type = request.args.get('file_type')
         if file_type in ['.fastq.gz', '.fa']:
             files = [file for file in os.listdir(path) if file.endswith(file_type)]
-            print(files)
+            #print(files)
             return jsonify(files)
     else:
         return jsonify([])
