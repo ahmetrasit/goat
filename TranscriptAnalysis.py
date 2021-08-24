@@ -8,6 +8,9 @@ class TranscriptAnalysis:
     gene2element = {}
     gene2name = {}
     gene2alias = {}
+    trans2pos = {}
+    exon2pos = {}
+    rest2pos = {}
     
     sam_file = None
     type2parse = {}
@@ -44,21 +47,21 @@ class TranscriptAnalysis:
         with open(sam_file) as f:
             for line in f:
                 if not line.startswith('@'):
-                    seq_count, flag, target, _, _, cigar, _ = line.split('\t', 6)
+                    seq_count, flag, target, pos, _, cigar, _ = line.split('\t', 6)
                     if not target.startswith('*'):
                         seq, count = seq_count.split(':')
                         strand = self.flag2strand(int(flag))
                         seq2count[seq] = int(count)
                         if seq in seq2genes:
                             try:
-                                seq2genes[seq][strand].add(self.parseMain(target))
+                                seq2genes[seq][strand].add(self.parseMain(target, pos, seq, strand))
                             except:
-                                seq2genes[seq][strand] = set([self.parseMain(target)])
+                                seq2genes[seq][strand] = set(self.parseMain(target, pos, seq, strand))
                         else:
                             try:
-                                seq2genes[seq] = {strand: set([self.parseMain(target)])}
+                                seq2genes[seq] = {strand: set(self.parseMain(target, pos, seq, strand))}
                             except Exception as e:
-                                print(f'Error parsing a line:{target}, {e}')
+                                print(f'Error parsing a line:{target, pos, seq, strand}, {e}')
                                 
         return seq2genes, seq2count
     
@@ -264,7 +267,29 @@ class TranscriptAnalysis:
         return filtered
 
     
-    
+    def updatePosDicts(self, seq2ppm):
+        gene2pos = {}
+        def updateSelected(curr_dict, seq2ppm):
+            selected = {}
+            for curr in curr_dict:
+                selected[curr] = {'a': {}, 's': {}}
+                for strand in 'as':
+                    for pos in curr_dict[curr][strand]:
+                        for seq in curr_dict[curr][strand][pos]:
+                            try:
+                                selected[curr][strand][int(pos)].append({seq: round(seq2ppm[seq], 4)})
+                            except:
+                                selected[curr][strand][int(pos)] = {seq: round(seq2ppm[seq], 4)}
+            return selected
+        pairs = {'trans': self.trans2pos, 'exon': self.exon2pos, 'rest': self.exon2pos}
+        gene2pos = {'trans': {}, 'exon': {}, 'rest': {}}
+
+        for category in pairs:
+            gene2pos[category] = updateSelected(pairs[category], seq2ppm)
+
+        return gene2pos
+
+
     
     ########################
     ### Parsing SAM File ###
@@ -283,53 +308,83 @@ class TranscriptAnalysis:
         else:
             return 'error'
 
-    def parseTransposon(self, meta):
+    def parseTransposon(self, meta, pos, seq, strand):
         gene = meta.split(':')[2]
         self.gene2element[gene] = 'TRANSPOSON'
         self.gene2name[gene] = gene
         self.gene2alias[gene] = gene
+        try:
+            self.rest2pos[gene][strand][int(pos)].append(seq)
+        except:
+            if gene not in self.rest2pos:
+                self.rest2pos[gene] = {'a': {}, 's': {}}
+            self.rest2pos[gene][strand] = {int(pos): [seq]}
         return gene
 
-    def parseExon(self, meta):
-        genes = meta.split(':', 2)[2]
+    def parseExon(self, meta, pos, seq, strand):
+        _, exon_id, genes = meta.split(':', 2)
         for pair in genes.split("|"):
             gene, alias_name = pair.split(":")
             self.gene2element[gene] = 'PC'
             self.gene2alias[gene] = alias_name.split("_")[0]
             self.gene2name[gene] = alias_name.split("_")[-1]
+        try:
+            self.exon2pos[exon_id][strand][int(pos)].append(seq)
+        except:
+            if exon_id not in self.exon2pos:
+                self.exon2pos[exon_id] = {'a':{}, 's':{}}
+            self.exon2pos[exon_id][strand] = {int(pos):[seq]}
         return gene
 
-    def parseTranscript(self, meta):
+    def parseTranscript(self, meta, pos, seq, strand):
         _, trans, gene = meta.split(':')
         self.gene2element[gene] = 'PC'
         name = self.getTranscriptGeneName(trans)
         self.gene2name[gene] = name
+        try:
+            self.trans2pos[trans][strand][int(pos)].append(seq)
+        except:
+            if trans not in self.trans2pos:
+                self.trans2pos[trans] = {'a': {}, 's': {}}
+            self.trans2pos[trans][strand] = {int(pos): [seq]}
         return gene
 
-    def parsePseudogene(self, meta):
+    def parsePseudogene(self, meta, pos, seq, strand):
         _, name, gene = meta.split(':')
         self.gene2element[gene] = 'PSEUODOGENE'
         self.gene2name[gene] = name
         self.gene2alias[gene] = name
+        try:
+            self.rest2pos[gene][strand][int(pos)].append(seq)
+        except:
+            if gene not in self.rest2pos:
+                self.rest2pos[gene] = {'a': {}, 's': {}}
+            self.rest2pos[gene][strand] = {int(pos): [seq]}
         return gene
 
-    def parseRest(self, meta):
+    def parseRest(self, meta, pos, seq, strand):
         #print(meta)
         try:
             element, _, gene, alias_name = meta.split(':')
             self.gene2alias[gene] = alias_name.split("_")[0]
             self.gene2name[gene] = alias_name.split("_")[-1]
             self.gene2element[gene] = element
+            try:
+                self.rest2pos[gene][strand][int(pos)].append(seq)
+            except:
+                if gene not in self.rest2pos:
+                    self.rest2pos[gene] = {'a': {}, 's': {}}
+                self.rest2pos[gene][strand] = {int(pos): [seq]}
         except:
             print(meta)
         return gene
 
-    def parseMain(self, meta):
+    def parseMain(self, meta, pos, seq, strand):
         tag = meta[:7]
         if tag in self.type2parse:
-            return self.type2parse[tag](meta)
+            return self.type2parse[tag](meta, pos, seq, strand)
         else:
-            return self.parseRest(meta)
+            return self.parseRest(meta, pos, seq, strand)
         
         
     ###################

@@ -30,7 +30,7 @@
             </div>
             <div class="col-md-12 p-2">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-check form-check-inline">
                           <input class="form-check-input" type="checkbox" id="use_counts_fa" name="use_counts_fa" onchange="toggleCutadaptParameters()">
                           <label class="form-check-label" for="use_counts_fa">Contine with counts.fa</label>
@@ -42,10 +42,16 @@
                             <input type="text" name="adapter_seq" class="form-control" value="AGATCGGAAGAGCAC">
                         </div>
                     </div>
-                    <div class="col-md-3 cutadapt_parameters">
+                    <div class="col-md-2 cutadapt_parameters">
                         <div class="input-group">
                             <span class="input-group-text" style="font-size:.9em;">Min length</span>
                             <input type="text" name="min_seq_len" class="form-control" value="14">
+                        </div>
+                    </div>
+                    <div class="col-md-2 cutadapt_parameters">
+                        <div class="input-group">
+                            <span class="input-group-text" style="font-size:.9em;">5' UMI</span>
+                            <input type="text" name="first_n" class="form-control" value="0">
                         </div>
                     </div>
                 </div>

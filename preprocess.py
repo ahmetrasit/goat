@@ -46,53 +46,68 @@ class Preprocess:
                 print('time for JBrowser')
                 adapter_seq = formdata['adapter_seq']
                 min_seq_len = formdata['min_seq_len']
-                self.jbrowse_prep(path, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len)
+                first_n = int(formdata['first_n']) + 1
+                self.jbrowse_prep(path, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len, first_n)
             return formdata, ''
         else:
             return '', 'No files found in the path'
 
 
-    def jbrowse_prep(self, data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len):
+    def jbrowse_prep(self, data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len, first_n):
         p = multiprocessing.Process(target=self.doJBrowseProcessing,
-                                    args=(data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len))
+                                    args=(data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len, first_n))
         p.start()
 
 
-    def doJBrowseProcessing(self, data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len):
+    def doJBrowseProcessing(self, data_folder, exp_folder, file2alias, exp_name, adapter_seq, min_seq_len, first_n):
         #a separate main function for jbrowse processing
         folders = {'data_folder':data_folder, 'exp_folder':exp_folder}
         folders['trimmed_folder'] = self.createDir(os.path.join(exp_folder, 'trimmed'))
         folders['jbrowse_folder'] = self.createDir(os.path.join(exp_folder, 'jbrowse_data'))
         folders['counts_folder'] = self.createDir(os.path.join(exp_folder, 'counts'))
+        folders['exp_folder'] = exp_folder
 
         proc_list = []
         fastq_gz_files = [file for file in os.listdir(data_folder) if file.endswith('.fastq.gz')]
         for fi, file in enumerate(fastq_gz_files):
             if file.endswith('.fastq.gz'):
-                proc_list.append([f'{fi}/{len(fastq_gz_files)}', file, folders, file2alias, exp_name, adapter_seq, min_seq_len])
+                proc_list.append([f'{fi}/{len(fastq_gz_files)}', file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n])
         pool = multiprocessing.Pool(os.cpu_count() // 2)
         report = pool.map(func=self.singleFileJBrowse, iterable=proc_list, chunksize=1)
         pool.close()
         pool.join()
 
         jbrowse_report = {}
-        for file, output in report:
+        for file, *output in report:
             jbrowse_report[file] = output
 
     def singleFileJBrowse(self, args):
-        fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len = args
+        fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n = args
         ca_out, ca_err = self.cutadaptSamples(fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len)
         #self.createBamBigWig(fi, file, folders, file2alias)
-        cc_out, cc_err = self.createCountsFa(fi, file, folders, file2alias)
-        #self.align(fi, file, folders, file2alias, exp_name)
-        return file, [[ca_out, ca_err], [cc_out, cc_err]]
+        cc_out, cc_err = self.createCountsFa(fi, file, folders, file2alias, first_n)
+        _, a_err = self.singleSampleAlignProcess(fi, file, folders, file2alias, exp_name)
 
-    def createCountsFa(self, fi, file, folders, file2alias):
+        return file, [[ca_out, ca_err], [cc_out, cc_err]], cc_err
+
+    def singleSampleAlignProcess(self, fi, file, folders, file2alias, exp_name):
+        sam_folder = self.createDir(os.path.join(folders['exp_folder'], 'sam'))
+        split_folder = self.createDir(os.path.join(folders['exp_folder'], 'split'))
+        file_path = os.path.join(folders['counts_folder'], file2alias[file]) + '.counts.fa'
+        sam_path = os.path.join(sam_folder, file2alias[file])
+
+        process = ['bowtie2', f'-a -f -x mappers/merged.ws274 -U {file_path} | grep', "-v '^@'", f'> {sam_path}.sam']
+        file, error = self.handlePreProcessing([f'{fi}/{len(file2alias)}', file, process, sam_folder, split_folder, file2alias])
+        return file, error
+
+    def createCountsFa(self, fi, file, folders, file2alias, first_n):
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         counts_file_prefix = os.path.join(folders['counts_folder'], file2alias[file])
-        counts_fa_prep_cmd = ["scripts/create_counts_fa.sh", counts_file_prefix, trimmed_file_path]
+        counts_fa_prep_cmd = ["scripts/create_counts_fa.sh", counts_file_prefix, trimmed_file_path, str(first_n)]
+        print(counts_fa_prep_cmd)
         sp = subprocess.Popen(counts_fa_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = sp.communicate()
+        print(str(out).split('\n'), str(err).split('\n'))
         return str(out).split('\n'), str(err).split('\n')
 
 
@@ -115,11 +130,8 @@ class Preprocess:
 
     def align(self, data_folder, exp_folder, file2alias, exp_name):
         process_dict = {}
-        #print('>>>Bowtie', data_folder)
-        sam_folder = os.path.join(exp_folder, 'sam')
-        split_folder = os.path.join(exp_folder, 'split')
-        self.createDir(sam_folder)
-        self.createDir(split_folder)
+        sam_folder = self.createDir(os.path.join(exp_folder, 'sam'))
+        split_folder = self.createDir(os.path.join(exp_folder, 'split'))
 
         for file in os.listdir(data_folder):
             if file.endswith('.fa'):
@@ -166,11 +178,17 @@ class Preprocess:
         gene2total_ppm, seq2ppm, total_read_count = ta.calculateWith['everything'](gene2seq, seq2genes, seq2count,
                                                                                    multi)
         norm_gene2total_ppm, norm_seq2ppm = ta.normalizeBy['everything'](gene2total_ppm, seq2ppm)
+        gene2pos = ta.updatePosDicts(norm_seq2ppm)
+        self.saveFile(os.path.join(split_folder, file2alias[file]) + '.gene2pos.json', gene2pos)
         ta.splitNormalizedSample(gene2seq, norm_seq2ppm, os.path.join(split_folder, file2alias[file]))
         print(f'{file} ({fi})', 'finished', f'{int(time.time() - start)} sec elapsed')
         self.compressFile(sam_file)
         return file, err.decode("utf-8").split('\n')
 
+
+    def saveFile(self, path, data):
+        with open(path, 'w') as f:
+            json.dump(data, f)
 
     def moveFolder(self, source_folder, target_folder):
         try:
