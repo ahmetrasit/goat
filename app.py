@@ -57,7 +57,11 @@ def organizeFileList(file_list):
     for parent in sorted(set([path.split('/')[0] for path in file_list])):
         organized_list.append((f'<h5 class="mt-3"> {parent} </h5>', ''))
         for file in [file for file in file_list if file.startswith(f'{parent}/')]:
-            organized_list.append((file.split('/')[-1], file))
+            #organized_list.append((file.split('/')[-1], file))
+            if file.startswith('original'):
+                organized_list.append(('/'.join(file.split('/')[-2:]), file))
+            else:
+                organized_list.append((file.split('/')[-1], file))
         organized_list.append(('', ''))
     return organized_list
 

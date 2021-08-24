@@ -30,9 +30,11 @@ class TranscriptAnalysis:
         
     def run(self):
         seq2genes, seq2count = self.parseSamFile(self.sam_file)
+
         unique, multi = self.findMappers(seq2genes)
         gene2seq = self.getGene2Seq(seq2genes, unique, multi)
-        
+        #shorts = [curr for curr in gene2seq if len(curr) == 1]
+
         return seq2genes, gene2seq, seq2count, unique, multi
     
     
@@ -52,17 +54,21 @@ class TranscriptAnalysis:
                         seq, count = seq_count.split(':')
                         strand = self.flag2strand(int(flag))
                         seq2count[seq] = int(count)
+                        gene = self.parseMain(target, pos, seq, strand)
+                        if len(gene) < 2:
+                            print(gene, target)
                         if seq in seq2genes:
                             try:
-                                seq2genes[seq][strand].add(self.parseMain(target, pos, seq, strand))
+                                seq2genes[seq][strand].add(gene)
                             except:
-                                seq2genes[seq][strand] = set(self.parseMain(target, pos, seq, strand))
+                                seq2genes[seq][strand] = set([gene])
                         else:
                             try:
-                                seq2genes[seq] = {strand: set(self.parseMain(target, pos, seq, strand))}
+                                seq2genes[seq] = {strand: set([gene])}
                             except Exception as e:
                                 print(f'Error parsing a line:{target, pos, seq, strand}, {e}')
-                                
+        #shorts = set([gene for seq in seq2genes for strand in seq2genes[seq] for gene in seq2genes[seq][strand] if len(gene) == 1])
+        #print('!!>>S', shorts)
         return seq2genes, seq2count
     
     
@@ -319,6 +325,8 @@ class TranscriptAnalysis:
             if gene not in self.rest2pos:
                 self.rest2pos[gene] = {'a': {}, 's': {}}
             self.rest2pos[gene][strand] = {int(pos): [seq]}
+        if len(gene) < 2:
+            print(gene, 'transposon')
         return gene
 
     def parseExon(self, meta, pos, seq, strand):
@@ -334,6 +342,8 @@ class TranscriptAnalysis:
             if exon_id not in self.exon2pos:
                 self.exon2pos[exon_id] = {'a':{}, 's':{}}
             self.exon2pos[exon_id][strand] = {int(pos):[seq]}
+        if len(gene) < 2:
+            print(gene, 'exon')
         return gene
 
     def parseTranscript(self, meta, pos, seq, strand):
@@ -347,6 +357,8 @@ class TranscriptAnalysis:
             if trans not in self.trans2pos:
                 self.trans2pos[trans] = {'a': {}, 's': {}}
             self.trans2pos[trans][strand] = {int(pos): [seq]}
+        if len(gene) < 2:
+            print(gene, 'transcript')
         return gene
 
     def parsePseudogene(self, meta, pos, seq, strand):
@@ -360,6 +372,8 @@ class TranscriptAnalysis:
             if gene not in self.rest2pos:
                 self.rest2pos[gene] = {'a': {}, 's': {}}
             self.rest2pos[gene][strand] = {int(pos): [seq]}
+        if len(gene) < 2:
+            print(gene, 'pseudogene')
         return gene
 
     def parseRest(self, meta, pos, seq, strand):
@@ -377,6 +391,8 @@ class TranscriptAnalysis:
                 self.rest2pos[gene][strand] = {int(pos): [seq]}
         except:
             print(meta)
+        if len(gene) < 2:
+            print(gene, 'rest')
         return gene
 
     def parseMain(self, meta, pos, seq, strand):
@@ -413,12 +429,9 @@ class TranscriptAnalysis:
     
     ###########################################
     ### Split data into smaller json chunks ###
-    def splitNormalizedSample(self, gene2seq, norm_seq2ppm, folder):
-        try:
-            os.mkdir(folder)
-            self.createFilteredJson(gene2seq, norm_seq2ppm, folder)
-        except Exception as e:
-            print(f'Error creating a folder: {e}')
+    def splitNormalizedSample(self, gene2seq, norm_seq2ppm, sample_folder):
+        self.createFilteredJson(gene2seq, norm_seq2ppm, sample_folder)
+
 
     def createFilteredJson(self, gene2seq, norm_seq2ppm, folder):
         for nt in 'ATGC':
@@ -427,8 +440,9 @@ class TranscriptAnalysis:
                 len_start = length
                 len_end = length
                 filtered = self.filterGenesBySpecies(gene2seq, len_start, len_end, nt, norm_seq2ppm)
-                with open(os.path.join(folder, f'{species}.json'), 'w') as f:
-                    json.dump(filtered, f)
+                if filtered:
+                    with open(os.path.join(folder, f'{species}.json'), 'w') as f:
+                        json.dump(filtered, f)
 
 
     def filterSeqBySpecies(self, seq_set, len_start, len_end, nt, norm_seq2ppm):
@@ -454,3 +468,10 @@ class TranscriptAnalysis:
 
         return filtered_gene2seq    
 
+
+    def createDir(self, folder):
+        try:
+            os.mkdir(folder)
+        except Exception as e:
+            print(f'folder already exists: {e}, {folder}')
+        return folder

@@ -19,7 +19,8 @@ class Preprocess:
     def main(self, formdata):
         if 'filename_0' in formdata:
             path = formdata['path'].strip()
-            exp_name = formdata['experiment_name'].strip()
+            username = formdata['username'].strip()
+            exp_name = username + '_' + formdata['experiment_name'].strip()
             if len(exp_name) == 0:
                 letters = string.ascii_lowercase
                 exp_name = ''.join(random.choice(letters) for i in range(10))
@@ -36,6 +37,7 @@ class Preprocess:
                     else:
                         file2alias[curr_filename] = curr_filename
             exp_folder = self.createDir(os.path.join(path, exp_name))
+            self.createDir(f'data/original/{exp_name}')
             with open(os.path.join(exp_folder, 'file2alias.json'), 'w') as f:
                 json.dump(file2alias, f)
 
@@ -71,7 +73,7 @@ class Preprocess:
         fastq_gz_files = [file for file in os.listdir(data_folder) if file.endswith('.fastq.gz')]
         for fi, file in enumerate(fastq_gz_files):
             if file.endswith('.fastq.gz'):
-                proc_list.append([f'{fi}/{len(fastq_gz_files)}', file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n])
+                proc_list.append([f'{fi+1}/{len(fastq_gz_files)}', file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n])
         pool = multiprocessing.Pool(os.cpu_count() // 2)
         report = pool.map(func=self.singleFileJBrowse, iterable=proc_list, chunksize=1)
         pool.close()
@@ -80,6 +82,10 @@ class Preprocess:
         jbrowse_report = {}
         for file, *output in report:
             jbrowse_report[file] = output
+
+        with open(os.path.join(folders['exp_folder'], 'alignment_report.json'), 'w') as f:
+            json.dump(jbrowse_report, f)
+
 
     def singleFileJBrowse(self, args):
         fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n = args
@@ -97,7 +103,10 @@ class Preprocess:
         sam_path = os.path.join(sam_folder, file2alias[file])
 
         process = ['bowtie2', f'-a -f -x mappers/merged.ws274 -U {file_path} | grep', "-v '^@'", f'> {sam_path}.sam']
-        file, error = self.handlePreProcessing([f'{fi}/{len(file2alias)}', file, process, sam_folder, split_folder, file2alias])
+        file, error = self.handlePreProcessing([f'{fi}', file, process, sam_folder, split_folder, file2alias])
+        orig_split_folder = os.path.join(split_folder, file2alias[file])
+        self.moveFolder(orig_split_folder, f'data/original/{exp_name}/{file2alias[file]}')
+
         return file, error
 
     def createCountsFa(self, fi, file, folders, file2alias, first_n):
@@ -150,7 +159,7 @@ class Preprocess:
         alignment_report = {}
         proc_list = []
         for fi, file in enumerate(process_dict):
-            proc_list.append([f'{fi}/{len(process_dict)}', file, process_dict[file], output_folder, split_folder, file2alias])
+            proc_list.append([f'{fi+1}/{len(process_dict)}', file, process_dict[file], output_folder, split_folder, file2alias])
         pool = multiprocessing.Pool(os.cpu_count() // 2)
         report = pool.map(func=self.handlePreProcessing, iterable=proc_list, chunksize=1)
         pool.close()
@@ -175,12 +184,12 @@ class Preprocess:
         ta = TranscriptAnalysis(sam_file)
         seq2genes, gene2seq, seq2count, unique, multi = ta.run()
         print(f'{file} ({fi})', 'ta.run()', f'{int(time.time() - start)} sec elapsed')
-        gene2total_ppm, seq2ppm, total_read_count = ta.calculateWith['everything'](gene2seq, seq2genes, seq2count,
-                                                                                   multi)
+        gene2total_ppm, seq2ppm, total_read_count = ta.calculateWith['everything'](gene2seq, seq2genes, seq2count,                                                                                   multi)
         norm_gene2total_ppm, norm_seq2ppm = ta.normalizeBy['everything'](gene2total_ppm, seq2ppm)
         gene2pos = ta.updatePosDicts(norm_seq2ppm)
-        self.saveFile(os.path.join(split_folder, file2alias[file]) + '.gene2pos.json', gene2pos)
-        ta.splitNormalizedSample(gene2seq, norm_seq2ppm, os.path.join(split_folder, file2alias[file]))
+        sample_split_folder = self.createDir(os.path.join(split_folder, file2alias[file]))
+        self.saveFile(sample_split_folder + f'/{file2alias[file]}.gene2pos.json', gene2pos)
+        ta.splitNormalizedSample(gene2seq, norm_seq2ppm, sample_split_folder)
         print(f'{file} ({fi})', 'finished', f'{int(time.time() - start)} sec elapsed')
         self.compressFile(sam_file)
         return file, err.decode("utf-8").split('\n')
@@ -207,6 +216,5 @@ class Preprocess:
         try:
             os.mkdir(folder)
         except Exception as e:
-            #print(f'folder already exists: {e}, {folder}')
-            pass
+            print(f'folder already exists: {e}, {folder}')
         return folder
