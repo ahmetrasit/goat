@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, flash, jsonify
 from process import Process
 from preprocess import Preprocess
+import logging
+
 import subprocess
 import multiprocessing
 import time
@@ -135,5 +137,11 @@ def preprocess():
 
     return render_template('preprocess.html')
 
+
+if __name__ == "__main__":
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
+    app.run(host='0.0.0.0', debug=True)
 
 

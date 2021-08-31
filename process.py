@@ -3,6 +3,8 @@ import os
 from markupsafe import escape
 import html
 import re
+import logging
+
 
 class Process:
     def __init__(self):
@@ -63,14 +65,11 @@ class Process:
         with open(file) as f:
             curr_data = json.load(f)
             for gene in curr_data:
-                u_data = self.speciesFilter(curr_data[gene]['u'], options)
-                m_data = self.speciesFilter(curr_data[gene]['m'], options)
-                curr_gene_data = {'u': u_data, 'm': m_data}
+                curr_gene_data = self.speciesFilter(curr_data[gene], options)
 
-                if len(u_data) > 0 and len(m_data) > 0:
+                if len(curr_gene_data) > 0:
                     if gene in data:
-                        for mapper in 'um':
-                            data[gene][mapper] = {**data[gene][mapper], **curr_gene_data[mapper]}
+                            data[gene] = {**data[gene], **curr_gene_data}
                     else:
                         data[gene] = curr_gene_data
 
@@ -88,7 +87,7 @@ class Process:
 
                 curr_gene_data = {'u': u_data, 'm': m_data}
 
-                if len(u_data) > 0 and len(m_data) > 0:
+                if len(u_data) > 0 or len(m_data) > 0:
                     if gene in data:
                         for mapper in 'um':
                             data[gene][mapper] = {**data[gene][mapper], **curr_gene_data[mapper]}

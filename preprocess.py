@@ -10,8 +10,12 @@ import shutil
 from TranscriptAnalysis import TranscriptAnalysis
 import random
 import string
+import logging
+
+
 
 class Preprocess:
+
     def __init__(self):
         pass
 
@@ -45,7 +49,7 @@ class Preprocess:
                 print('>>>>counts')
                 self.align(path, exp_folder, file2alias, exp_name)
             else:
-                print('time for JBrowser')
+                print('time for JBrowse')
                 adapter_seq = formdata['adapter_seq']
                 min_seq_len = formdata['min_seq_len']
                 first_n = int(formdata['first_n']) + 1
@@ -89,6 +93,7 @@ class Preprocess:
 
     def singleFileJBrowse(self, args):
         fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n = args
+        print('>before cutadapt')
         ca_out, ca_err = self.cutadaptSamples(fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len)
         #self.createBamBigWig(fi, file, folders, file2alias)
         cc_out, cc_err = self.createCountsFa(fi, file, folders, file2alias, first_n)
@@ -124,7 +129,7 @@ class Preprocess:
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         jbrowse_file_prefix = os.path.join(folders['jbrowse_folder'], file2alias[file])
         jupyter_prep_cmd = ["scripts/jupyter_prep.sh", jbrowse_file_prefix, trimmed_file_path, 'mappers/genome', '~/ucsc-tools']
-        sp = subprocess.Popen(jupyter_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sp = subprocess.Popen(jupyter_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         out, err = sp.communicate()
         return str(out).split('\n'), str(err).split('\n')
 
@@ -133,8 +138,10 @@ class Preprocess:
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         fastq_file_path = os.path.join(folders['data_folder'], file)
         cutadapt_cmd = ["cutadapt", "-a", adapter_seq, "-m", min_seq_len, "-o", trimmed_file_path, fastq_file_path]
-        sp = subprocess.Popen(cutadapt_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(' '.join(cutadapt_cmd))
+        sp = subprocess.Popen(cutadapt_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         out, err = sp.communicate()
+        print(str(out).split('\n'), str(err).split('\n'))
         return str(out).split('\n'), str(err).split('\n')
 
     def align(self, data_folder, exp_folder, file2alias, exp_name):
@@ -177,7 +184,7 @@ class Preprocess:
         fi, file, cmd, output_folder, split_folder, file2alias = args
         start = time.time()
         print(f'{file} ({fi})', 'starting..')
-        sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         out, err = sp.communicate()
         print(f'{file} ({fi})', 'bowtie2', f'{int(time.time() - start)} sec elapsed')
         sam_file = os.path.join(output_folder, f'{file2alias[file]}.sam')
