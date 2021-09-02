@@ -1,15 +1,16 @@
 import json
 import os
+import shlex
 from markupsafe import escape
 import html
-import subprocess
+from subprocess import Popen, PIPE
 import multiprocessing
 import time
-import gzip
 import shutil
 from TranscriptAnalysis import TranscriptAnalysis
 import random
 import string
+import gzip
 import logging
 
 
@@ -95,11 +96,12 @@ class Preprocess:
         fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len, first_n = args
         print('>before cutadapt')
         ca_out, ca_err = self.cutadaptSamples(fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len)
-        #self.createBamBigWig(fi, file, folders, file2alias)
+
         cc_out, cc_err = self.createCountsFa(fi, file, folders, file2alias, first_n)
         _, a_err = self.singleSampleAlignProcess(fi, file, folders, file2alias, exp_name)
+        cbbw_out, cbbw_err = self.createBamBigWig(fi, file, folders, file2alias)
 
-        return file, [[ca_out, ca_err], [cc_out, cc_err]], cc_err
+        return file, [ca_out, ca_err], [cc_out, cc_err], [cbbw_out, cbbw_err]
 
     def singleSampleAlignProcess(self, fi, file, folders, file2alias, exp_name):
         sam_folder = self.createDir(os.path.join(folders['exp_folder'], 'sam'))
@@ -107,7 +109,7 @@ class Preprocess:
         file_path = os.path.join(folders['counts_folder'], file2alias[file]) + '.counts.fa'
         sam_path = os.path.join(sam_folder, file2alias[file])
 
-        process = ['bowtie2', f'-a -f -x mappers/merged.ws274 -U {file_path} | grep', "-v '^@'", f'> {sam_path}.sam']
+        process = ["/usr/bin/bowtie2", f'-a -f -x mappers/merged.ws274 -U {file_path}', f'> {sam_path}.sam']
         file, error = self.handlePreProcessing([f'{fi}', file, process, sam_folder, split_folder, file2alias])
         orig_split_folder = os.path.join(split_folder, file2alias[file])
         self.moveFolder(orig_split_folder, f'data/original/{exp_name}/{file2alias[file]}')
@@ -117,20 +119,28 @@ class Preprocess:
     def createCountsFa(self, fi, file, folders, file2alias, first_n):
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         counts_file_prefix = os.path.join(folders['counts_folder'], file2alias[file])
+
         counts_fa_prep_cmd = ["scripts/create_counts_fa.sh", counts_file_prefix, trimmed_file_path, str(first_n)]
         print(counts_fa_prep_cmd)
-        sp = subprocess.Popen(counts_fa_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sp = Popen(counts_fa_prep_cmd, stdout=PIPE, stderr=PIPE)
         out, err = sp.communicate()
-        print(str(out).split('\n'), str(err).split('\n'))
-        return str(out).split('\n'), str(err).split('\n')
-
+        for curr in [out, err]:
+            for currline in str(curr).split('\n'):
+                print(curr)
+            print()
+        return str(out), str(err)
 
     def createBamBigWig(self, fi, file, folders, file2alias):
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         jbrowse_file_prefix = os.path.join(folders['jbrowse_folder'], file2alias[file])
-        jupyter_prep_cmd = ["scripts/jupyter_prep.sh", jbrowse_file_prefix, trimmed_file_path, 'mappers/genome', '~/ucsc-tools']
-        sp = subprocess.Popen(jupyter_prep_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+        jupyter_prep_cmd = ["scripts/jupyter_prep.sh", jbrowse_file_prefix, trimmed_file_path, 'mappers/genome', '/users/ahmetrasit/ucsc-tools']
+        sp = Popen(jupyter_prep_cmd, stdout=PIPE, stderr=PIPE, shell=False)
         out, err = sp.communicate()
+        for curr in [out, err]:
+            for currline in str(curr).split('\n'):
+                for x in currline.split('\\n'):
+                    print(x)
+            print()
         return str(out).split('\n'), str(err).split('\n')
 
     def cutadaptSamples(self, fi, file, folders, file2alias, exp_name, adapter_seq, min_seq_len):
@@ -139,9 +149,8 @@ class Preprocess:
         fastq_file_path = os.path.join(folders['data_folder'], file)
         cutadapt_cmd = ["cutadapt", "-a", adapter_seq, "-m", min_seq_len, "-o", trimmed_file_path, fastq_file_path]
         print(' '.join(cutadapt_cmd))
-        sp = subprocess.Popen(cutadapt_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+        sp = Popen(cutadapt_cmd, stdout=PIPE, stderr=PIPE, shell=False)
         out, err = sp.communicate()
-        print(str(out).split('\n'), str(err).split('\n'))
         return str(out).split('\n'), str(err).split('\n')
 
     def align(self, data_folder, exp_folder, file2alias, exp_name):
@@ -153,8 +162,7 @@ class Preprocess:
             if file.endswith('.fa'):
                 file_path = os.path.join(data_folder, file)
                 sam_path = os.path.join(sam_folder, file2alias[file])
-                process_dict[file] = ['bowtie2', f'-a -f -x mappers/merged.ws274 -U {file_path} | grep', "-v '^@'",
-                                      f'> {sam_path}.sam']
+                process_dict[file] = ['/usr/bin/bowtie2', '-a',  '-f',  '-x mappers/merged.ws274',  f'-U {file_path}']
 
         p = multiprocessing.Process(target=self.processController, args=(process_dict, sam_folder, split_folder, file2alias, exp_name))
         p.start()
@@ -184,8 +192,13 @@ class Preprocess:
         fi, file, cmd, output_folder, split_folder, file2alias = args
         start = time.time()
         print(f'{file} ({fi})', 'starting..')
-        sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+        sp = Popen(cmd, stdout=PIPE, stderr=PIPE)
         out, err = sp.communicate()
+        for curr in [out, err]:
+            for currline in str(curr).split('\n'):
+                for x in currline.split('\\n'):
+                    print(x)
+            print()
         print(f'{file} ({fi})', 'bowtie2', f'{int(time.time() - start)} sec elapsed')
         sam_file = os.path.join(output_folder, f'{file2alias[file]}.sam')
         ta = TranscriptAnalysis(sam_file)
@@ -208,13 +221,13 @@ class Preprocess:
 
     def moveFolder(self, source_folder, target_folder):
         try:
-            subprocess.Popen(['mv', f'{source_folder}', f'{target_folder}'])
+            Popen(['mv', f'{source_folder}', f'{target_folder}'])
         except Exception as e:
             print(f'Error moving folder {source_folder} to {target_folder} :{e}')
 
     def compressFile(self, file):
         try:
-            subprocess.Popen(['gzip', f'{file}'])
+            Popen(['gzip', f'{file}'])
         except Exception as e:
             print(f'Error gzipping {file}: {e}')
 

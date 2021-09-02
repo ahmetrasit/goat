@@ -1,13 +1,13 @@
 #!/bin/sh
-name=$1
+name=$1;
 file=$2;
 ref=$3;
-toolFolder=$4
+toolFolder=$4;
 echo $file;
 echo $ref;
 echo $name;
 echo $toolFolder;
-hisat2 --dta-cufflinks -p 40 -x $ref/ws270hisat2 -U $file -S $name.ws270hisat2.sam;
+hisat2 --dta-cufflinks -p 10 -x $ref/ws270hisat2 -U $file -S $name.ws270hisat2.sam;
 cat $name.ws270hisat2.sam | samtools view -@ 40 -Shub - | samtools sort -@ 40 - -o $name".bam"; samtools index $name".bam";
 dep=$(samtools view -c -F 260 $name".bam");
 echo $dep;
