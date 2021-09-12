@@ -109,7 +109,7 @@ class Preprocess:
         file_path = os.path.join(folders['counts_folder'], file2alias[file]) + '.counts.fa'
         sam_path = os.path.join(sam_folder, file2alias[file])
 
-        process = ["/usr/bin/bowtie2", f'-a -f -x mappers/merged.ws274 -U {file_path}', f'> {sam_path}.sam']
+        process = ["/usr/bin/bowtie2", f'-a -f -p 10 -x mappers/merged.ws274 -U {file_path}', f'> {sam_path}.sam']
         file, error = self.handlePreProcessing([f'{fi}', file, process, sam_folder, split_folder, file2alias])
         orig_split_folder = os.path.join(split_folder, file2alias[file])
         self.moveFolder(orig_split_folder, f'data/original/{exp_name}/{file2alias[file]}')
@@ -147,7 +147,7 @@ class Preprocess:
         #do not use multithreading, it may clog when multiple users submit jobs, and I'm already using cpu/2
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         fastq_file_path = os.path.join(folders['data_folder'], file)
-        cutadapt_cmd = ["cutadapt", "-a", adapter_seq, "-m", min_seq_len, "-o", trimmed_file_path, fastq_file_path]
+        cutadapt_cmd = ["cutadapt", "-a", adapter_seq, "-j", "10", "-m", min_seq_len, "-o", trimmed_file_path, fastq_file_path]
         print(' '.join(cutadapt_cmd))
         sp = Popen(cutadapt_cmd, stdout=PIPE, stderr=PIPE, shell=False)
         out, err = sp.communicate()
@@ -162,7 +162,7 @@ class Preprocess:
             if file.endswith('.fa'):
                 file_path = os.path.join(data_folder, file)
                 sam_path = os.path.join(sam_folder, file2alias[file])
-                process_dict[file] = ['/usr/bin/bowtie2', '-a',  '-f',  '-x mappers/merged.ws274',  f'-U {file_path}']
+                process_dict[file] = ['/usr/bin/bowtie2', '-a',  '-f', 'p', '10', '-x mappers/merged.ws274',  f'-U {file_path}']
 
         p = multiprocessing.Process(target=self.processController, args=(process_dict, sam_folder, split_folder, file2alias, exp_name))
         p.start()

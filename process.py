@@ -10,6 +10,22 @@ class Process:
     def __init__(self):
         print('ready')
 
+    def setops(self, formdata):
+        groupA = formdata['groupA']
+        groupB = formdata['groupB']
+        operation = formdata['hidden_operation']
+        save_filename = escape(formdata['save']).replace('\s', '_')
+        id_sets = self.prepIdSets()
+        set_a = self.getGeneListInLocusName(groupA, id_sets)
+        set_b = self.getGeneListInLocusName(groupB, id_sets)
+        output = self.applyOperation(set_a, set_b, operation)
+        if output:
+            with open(f'data/genelist/{save_filename}.json', 'w') as f:
+                json.dump(list(output), f)
+            return '', f'Genelist saved as "{save_filename}", having {len(output)} genes.'
+        else:
+            return '', '!No genes found after set operation, file is not saved.'
+
     def filterData(self, formdata):
         sample = formdata['dataset'].split('/')[-1]
         len_start = int(formdata['length_start'])
@@ -361,3 +377,19 @@ class Process:
         with open(file_path, 'w') as f:
             json.dump(data, f)
         return f'{file}'
+
+
+    def getGeneListInLocusName(self, selected_gene_set_name, id_sets):
+        try:
+            with open(f'data/genelist/{selected_gene_set_name}.json') as f:
+                curr_data = json.load(f)
+                curr_id_type, perc_common = self.getIdType(id_sets, curr_data)
+                converted_ids = self.convert(curr_data, curr_id_type, 'name') if curr_id_type != 'name' else set(curr_data)
+                return converted_ids
+        except:
+            return set([])
+
+    def applyOperation(self, set_a, set_b, operation):
+        operations = {'and': set_a & set_b, 'or': set_a | set_b, 'a-b': set_a - set_b, 'b-a': set_b - set_a}
+        return operations[operation]
+

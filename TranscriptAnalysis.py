@@ -285,7 +285,7 @@ class TranscriptAnalysis:
                             try:
                                 selected[curr][strand][int(pos)].append({seq: round(seq2ppm[seq], 4)})
                             except:
-                                selected[curr][strand][int(pos)] = {seq: round(seq2ppm[seq], 4)}
+                                selected[curr][strand][int(pos)] = [{seq: round(seq2ppm[seq], 4)}]
             return selected
         pairs = {'trans': self.trans2pos, 'exon': self.exon2pos, 'rest': self.exon2pos}
         gene2pos = {'trans': {}, 'exon': {}, 'rest': {}}
@@ -324,7 +324,7 @@ class TranscriptAnalysis:
         except:
             if gene not in self.rest2pos:
                 self.rest2pos[gene] = {'a': {}, 's': {}}
-            self.rest2pos[gene][strand] = {int(pos): [seq]}
+            self.rest2pos[gene][strand][int(pos)] = [seq]
         if len(gene) < 2:
             print(gene, 'transposon')
         return gene
@@ -341,7 +341,7 @@ class TranscriptAnalysis:
         except:
             if exon_id not in self.exon2pos:
                 self.exon2pos[exon_id] = {'a':{}, 's':{}}
-            self.exon2pos[exon_id][strand] = {int(pos):[seq]}
+            self.exon2pos[exon_id][strand][int(pos)] = [seq]
         if len(gene) < 2:
             print(gene, 'exon')
         return gene
@@ -356,7 +356,7 @@ class TranscriptAnalysis:
         except:
             if trans not in self.trans2pos:
                 self.trans2pos[trans] = {'a': {}, 's': {}}
-            self.trans2pos[trans][strand] = {int(pos): [seq]}
+            self.trans2pos[trans][strand][int(pos)] = [seq]
         if len(gene) < 2:
             print(gene, 'transcript')
         return gene
@@ -371,7 +371,7 @@ class TranscriptAnalysis:
         except:
             if gene not in self.rest2pos:
                 self.rest2pos[gene] = {'a': {}, 's': {}}
-            self.rest2pos[gene][strand] = {int(pos): [seq]}
+            self.rest2pos[gene][strand][int(pos)] = [seq]
         if len(gene) < 2:
             print(gene, 'pseudogene')
         return gene
@@ -388,7 +388,7 @@ class TranscriptAnalysis:
             except:
                 if gene not in self.rest2pos:
                     self.rest2pos[gene] = {'a': {}, 's': {}}
-                self.rest2pos[gene][strand] = {int(pos): [seq]}
+                self.rest2pos[gene][strand][int(pos)] = [seq]
         except:
             print(meta)
         if len(gene) < 2:

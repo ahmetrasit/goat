@@ -9,9 +9,13 @@
             <a href="/bin">2. Bin Filtered Data to Genes</a>
         </div><div>
             <a href="/compare">3. Compare 2 Datasets</a>
+        </div><div>
+            <a href="/setops">4. Set Operations</a>
+        </div><div>
+            <a href="/plot">5. Plotting</a>
         </div>
     </div>
-    <div class="border">
+    <div class="border mt-3">
         {% for first, second in data %}
             <div>{{ first | safe }}</div>
         {% endfor %}

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Set Operations{% endblock %}
+
+{% block center %}
+    <form action="/" method="post">
+        <input type="hidden" name="type" value="setops">
+        <input type="hidden" id="input_groupA" name="groupA" value="">
+        <input type="hidden" id="input_groupB" name="groupB" value="">
+
+        <div class="row">
+            <div class="col-md-5 datasets border overflow-auto" style="height: 7em;"></div>
+            <div class="col-md-2 border text-center">
+                <button type="button" class="btn-sm btn-warning p-1 m-1" onclick="addToGroupA()">>>> Group A</button>
+                <button type="button" class="btn-sm btn-info p-1 m-1" onclick="addToGroupB()">>>> Group B</button>
+            </div>
+            <div class="col-md-5">
+                <div>
+                    <span class="h5">Group A: </span>
+                    <span id="groupA" class="p-1">Not selected</span>
+                </div>
+                <div>
+                    <span class="h5">Group B: </span>
+                    <span id="groupB" class="p-1">Not selected</span>
+                </div>
+            </div>
+        </div>
+        <div class="rules"></div>
+        <div class="mt-3">Give a name to save<input type="text" name="save"></div>
+        <input type="submit">
+    </form>
+{% endblock %}
+{% block afterbody %}
+    <script>
+        let selected = null;
+        let groupA = null;
+        let groupB = null;
+        let ruleGroups = [];
+
+        function darken(){
+            d3.selectAll('.dataset').style('background', 'white')
+            d3.select('#'+this.id).style('background', 'lightgray')
+        }
+
+        function lighten(){
+            d3.selectAll('.dataset').style('background', 'white')
+        }
+
+        function choose(){
+            d3.selectAll('.dataset').style('font-weight', 'normal')
+            d3.select('#'+this.id).style('font-weight', 'bold')
+            selected = this.id
+        }
+
+        function addToGroupA(){
+            groupA = selected;
+            if(groupA != groupB){
+                selected = null;
+                let html = d3.select('#'+groupA).html()
+                let path = d3.select('#'+groupA).attr('path')
+                d3.select('#groupA').html(html).attr('path', path)
+                d3.select('#input_groupA').attr('value', html)
+                d3.selectAll('.dataset').style('font-weight', 'normal')
+                populateDatasetList(orig_data)
+            }else{
+                groupA = null;
+                d3.select('#groupA').html('').attr('path', '')
+                populateDatasetList(orig_data)
+            }
+            d3.select('#groupA_gene_count').html('')
+            d3.select('#groupB_gene_count').html('')
+            d3.select('#operation_output').html('')
+        }
+
+        function addToGroupB(){
+            groupB = selected;
+            if(groupA != groupB) {
+                selected = null;
+                let html = d3.select('#' + groupB).html()
+                let path = d3.select('#' + groupB).attr('path')
+                d3.select('#groupB').html(html).attr('path', path)
+                d3.select('#input_groupB').attr('value', html)
+                d3.selectAll('.dataset').style('font-weight', 'normal')
+                populateDatasetList(orig_data)
+            }else{
+                groupB = null;
+                d3.select('#groupB').html('').attr('path', '')
+                populateDatasetList(orig_data)
+            }
+            d3.select('#groupA_gene_count').html('')
+            d3.select('#groupB_gene_count').html('')
+            d3.select('#operation_output').html('')
+        }
+
+        function addRuleGroup(){
+            ruleGroups.push(0)
+            let latestGroupId = ruleGroups.length-1
+            let newGroup = d3.select('.rules').append('div')
+                .attr('id', 'ruleGroup_' + latestGroupId)
+                .attr('class', 'border pt-2 pb-2')
+            //newGroup.append('div')
+                //.html('<button type="button" class="btn-sm btn-info p-1 m-1" onclick="addSetOp('+latestGroupId+')">Add a Set Operation</button>')
+            newGroup.append('div')
+                .attr('id', 'rules_'+latestGroupId)
+
+        }
+
+        function addSetOp(group_id){
+            ruleGroups[group_id] = ruleGroups[group_id]+1
+            let option_texts = ['A ∩ B', 'A ∪ B', 'A - B', 'B - A']
+            let option_values = ['and', 'or', 'a-b', 'b-a']
+            let rule_id = ruleGroups[group_id]
+            let curr_rule_identifier = ['rule', group_id, rule_id].join('_')
+
+            let newRule = d3.select('#rules_'+group_id).append('div').attr('class', 'row input-group m-1')
+                .attr('id', curr_rule_identifier)
+            //Adding rule structure
+            let setops_group = newRule.append('div').attr('class', 'col-md-4').append('div').attr('class', 'input-group')
+            setops_group.append('div').attr('id', 'operation_select').on('change', updateRuleInput)
+                .append('select').attr('class', 'form-control form-select').selectAll('option').data(option_texts).enter()
+                    .append('option').text(function(d,i){return d}).attr('value', function(d,i){return option_values[i]})
+            setops_group.append('span').attr('class', 'btn btn-primary form-control').html('Preview').attr('onclick', "previewOperation(\'" + curr_rule_identifier + "\')")
+                //.append('button').attr('class', 'btn btn-danger form-control').html('preview')
+                //.html('<button type="button" class="btn btn-danger form-control" onclick="previewOperation(\'' + curr_rule_identifier + '\')">Preview</button>')
+
+            let output_group = newRule.append('div').attr('class', 'col-md-8').append('div').attr('class', 'row')
+
+            let output = output_group.append('div').attr('class', 'col-md-4').append('div').attr('class', 'input-group')
+                output.append('span').attr('class', 'input-group-text').html('#:')
+                output.append('span').attr('class', 'form-control').attr('id', 'operation_output')
+            let groupA_genes = output_group.append('div').attr('class', 'col-md-4').append('div').attr('class', 'input-group')
+                groupA_genes.append('span').attr('class', 'input-group-text').html('in A:')
+                groupA_genes.append('span').attr('class', 'form-control').attr('id', 'groupA_gene_count')
+            let groupB_genes = output_group.append('div').attr('class', 'col-md-4').append('div').attr('class', 'input-group')
+                groupB_genes.append('span').attr('class', 'input-group-text').html('in B:')
+                groupB_genes.append('span').attr('class', 'form-control').attr('id', 'groupB_gene_count')
+
+            d3.select('form').append('input')
+                .attr('type', 'hidden')
+                .attr('name', 'hidden_operation')
+                .attr('id', 'hidden_operation')
+                .attr('value', getOperationFromId())
+        }
+
+
+        function getOperationFromId(){
+            let data_select = d3.select('#operation_select option:checked').attr('value')
+            //let operator_select = d3.select('#'+id).select('#operator_select option:checked').text()
+            //let data_input = d3.select('#'+id).select('#data_input').property('value')
+            //return [data_select, operator_select, data_input].join(';')
+            return data_select;
+        }
+
+        function previewOperation(rule_id){
+            if(groupA && groupB){
+                let htmlA = d3.select('#'+groupA).html()
+                let htmlB = d3.select('#'+groupB).html()
+                let operation = getOperationFromId()
+                d3.json('/preview/'+htmlA+'/'+htmlB+'/'+operation).then(function(data){
+                    //alert([data['output'].length, data['list_a'].length, data['list_b'].length])
+                    d3.select('#groupA_gene_count').html(data['list_a'].length)
+                    d3.select('#groupB_gene_count').html(data['list_b'].length)
+                    d3.select('#operation_output').html(data['output'].length)
+                })
+            }else{
+                alert('Please choose gene sets for both Group A and Group B')
+            }
+
+
+
+        }
+
+        function updateRuleInput(){
+            let rule_id = this.parentNode.id;
+            d3.select('#hidden_operation').remove();
+            d3.select('form').append('input')
+                .attr('type', 'hidden')
+                .attr('name', 'hidden_operation')
+                .attr('id', 'hidden_operation')
+                .attr('value', getOperationFromId(rule_id))
+            d3.select('#groupA_gene_count').html('')
+            d3.select('#groupB_gene_count').html('')
+            d3.select('#operation_output').html('')
+
+
+        }
+        addRuleGroup()
+        addSetOp(ruleGroups.length-1)
+    </script>
+    <script>
+        let orig_data = {{ data | safe}};
+        function populateDatasetList(data){
+            d3.select('.datasets').selectAll('div').remove();
+            d3.select('.datasets').selectAll('div').data(orig_data).enter()
+                .append('div')
+                    //.attr('class', 'dataset')
+                    .attr('id', function(d,i){return 'dataset_'+i})
+                    .on('mouseover', darken)
+                    .on('click', choose)
+                    .html(function(d){return d.split('/')[1].replace('.json', '')})
+                    .attr('path', function(d){return d})
+                    .attr('class', function(d,i){
+                        let curr_dataset = 'dataset_'+i
+                        if(curr_dataset==groupA || curr_dataset==groupB){
+                            return 'dataset selected text-muted';
+                        }else{
+                            return 'dataset';
+                        }
+                    })
+            d3.selectAll('div.selected').style('font-style', 'italic')
+        }
+
+        populateDatasetList(orig_data)
+
+    </script>
+
+{% endblock %}
