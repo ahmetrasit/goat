@@ -20,9 +20,8 @@ class Process:
         set_b = self.getGeneListInLocusName(groupB, id_sets)
         output = self.applyOperation(set_a, set_b, operation)
         if output:
-            with open(f'data/genelist/{save_filename}.json', 'w') as f:
-                json.dump(list(output), f)
-            return '', f'Genelist saved as "{save_filename}", having {len(output)} genes.'
+            saved_filename = self.saveFile(f'data/genelist/{save_filename}.json', list(output))
+            return '', f'Genelist saved as "{saved_filename}", having {len(output)} genes.'
         else:
             return '', '!No genes found after set operation, file is not saved.'
 
@@ -403,7 +402,8 @@ class Process:
                 curr_id_type, perc_common = self.getIdType(id_sets, curr_data)
                 converted_ids = self.convert(curr_data, curr_id_type, 'name') if curr_id_type != 'name' else set(curr_data)
                 return converted_ids
-        except:
+        except Exception as e:
+            print(f'>>>>>>>Error with genelist {selected_gene_set_name}:{e}')
             return set([])
 
     def applyOperation(self, set_a, set_b, operation):

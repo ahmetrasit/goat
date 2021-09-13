@@ -43,7 +43,7 @@
 
 
 <div class="col-md-12">
-    plot
+    deneme2
     <div class="svg" id="svg"></div>
 </div>
 
@@ -62,8 +62,9 @@
             let scale = d3.select('#scale_selection').property('value')
 
             if(scale==='log'){
-                x = d3.scaleLog().range([0.1, width]);
-                y = d3.scaleLog().range([height, 0.1]);
+                x = d3.scaleLog().range([0.1, width]).base(2);
+                y = d3.scaleLog().range([height, 0.1]).base(2);
+
             }else{
                 x = d3.scaleLinear().range([0.1, width]);
                 y = d3.scaleLinear().range([height, 0.1]);
@@ -107,18 +108,36 @@
                 .attr("cy", function(d) { return y(d.y); });
 
         let middle_line_data = [{x:0.1, y:0.1},{x:global_max, y:global_max}]
-        let upper_line_data = [{x:0.1, y:1},{x:global_max-1, y:global_max}]
+        let upper_line_data = [{x:.5, y:1},{x:global_max/2, y:global_max}]
+        let lower_line_data = [{x:1, y:.5},{x:global_max, y:global_max/2}]
         svg.append("path")
           .data([middle_line_data])
-          .attr("class", "line")
+          .attr("class", "mid_line")
           .attr("d", valueline);
         svg.append("path")
           .data([upper_line_data])
-          .attr("class", "line")
+          .attr("class", "upper_line")
           .attr("d", valueline);
-        d3.selectAll('.line')
-            .style('fill', 'black')
-            .style('stroke', 'black')
+        svg.append("path")
+          .data([lower_line_data])
+          .attr("class", "lower_line")
+          .attr("d", valueline);
+
+        d3.selectAll('.mid_line')
+            .style('fill', 'lightgray')
+            .style('stroke', 'lightgray')
+            .style('stroke-width', '1em')
+            .style('opacity', .3)
+
+        d3.selectAll('.upper_line')
+            .style('fill', 'purple')
+            .style('stroke', 'purple')
+            .style('stroke-width', '2px')
+
+        d3.selectAll('.lower_line')
+            .style('fill', 'green')
+            .style('stroke', 'green')
+            .style('stroke-width', '2px')
 
         //x-axis
         svg.append("g")

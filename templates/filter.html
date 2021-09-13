@@ -114,7 +114,7 @@
                 .append('div').attr('class', 'input-group pb-1')
                 .attr('id', curr_rule_identifier).on('keyup', updateRuleInput).on('change', updateRuleInput)
             //Adding rule structure
-            newRule.append('span').attr('class', 'input-group-text col-md-5').html('ppm/count')
+            newRule.append('span').attr('class', 'input-group-text col-md-5').html('ppm')
             newRule.append('select').attr('id', 'option_select').attr('class', 'form-control col-md-2').selectAll('option').data(['<', '≤', '≥', '>', '=']).enter()
                 .append('option').text(function(d,i){return d}).attr('value', function(d,i){return d})
             newRule.append('input').attr('value', 0).attr('id', 'data_input').attr('class', 'form-control col-md-2')
