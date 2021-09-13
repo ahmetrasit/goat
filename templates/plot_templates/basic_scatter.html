@@ -1,0 +1,134 @@
+<div class="jumbotron">
+  <h1 class="display-4">2-Sample Scatter Plot</h1>
+  <p class="lead">Select two datasets to create a scatter plot. Use gene filters to highlight selected gene classes.</p>
+</div>
+<script>
+    function geneListOnClick(d,selected_gene_list){
+        let is_checked = d3.select('#'+selected_gene_list).property('checked')
+        console.log(is_checked, selected_gene_list)
+        if(is_checked){
+            let selected = selected_gene_list.toLowerCase()
+            d3.selectAll('.gene_lists').property('checked', false)
+            d3.select('#'+selected_gene_list).property('checked', true)
+            console.log(selected)
+            d3.selectAll('.genes')
+                .style('stroke', 'navy')
+                .style('fill', 'lightblue')
+                .style('opacity', .5)
+            d3.json('/getgenelist/'+selected).then(function(data){
+                console.log(data.length);
+                data.forEach(gene => d3.select('#g_'+gene.replace('.', '_')).style('fill', 'tomato'));
+                })
+        }
+
+
+    }
+</script>
+
+{% include "selection_templates/pair_selection.html" %}
+<div class="input-group mt-3">
+    <div>
+        <select class="form-control form-select" id="scale_selection">
+        <option value="linear">Linear Scale</option>
+        <option value="log">Log Scale</option>
+    </select>
+    </div>
+
+    <span class="btn btn-primary form-control mb-5" onclick="plotScatterMain()">Create Plot</span>
+</div>
+
+<div id="genelist_selection_div" style="display:none">
+    {% include "selection_templates/genelist_selection.html" %}
+</div>
+
+
+<div class="col-md-12">
+    plot
+    <div class="svg" id="svg"></div>
+</div>
+
+<script>
+    var div_width = document.getElementById('svg').clientWidth
+    var margin = {top: 10, right: 10, bottom: 40, left: 40},
+    width = div_width - margin.left - margin.right,
+    height = div_width - margin.top - margin.bottom;
+    var x = null;
+    var y = null;
+
+    function plotScatterMain(){
+        if(groupA && groupB){
+            let fileA = d3.select('#'+groupA).html()
+            let fileB = d3.select('#'+groupB).html()
+            let scale = d3.select('#scale_selection').property('value')
+
+            if(scale==='log'){
+                x = d3.scaleLog().range([0.1, width]);
+                y = d3.scaleLog().range([height, 0.1]);
+            }else{
+                x = d3.scaleLinear().range([0.1, width]);
+                y = d3.scaleLinear().range([height, 0.1]);
+            }
+
+            console.log(fileA, fileB);
+            data = d3.json('/getDataPair/'+fileA+'/'+fileB+'/data_binned').then(function(data){
+                    plotScatter(data);
+                    d3.select('#genelist_selection_div').style('display', 'block')
+                })
+        }else{
+            alert('Please choose data files for both Group A and Group B')
+        }
+    }
+
+    function plotScatter(data){
+        d3.select('.svg').selectAll('svg').remove()
+        var svg = d3.select(".svg").append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                    .style('background', 'ivory')
+                  .append("g")
+                    .attr("transform",
+                          "translate(" + margin.left + "," + margin.top + ")");
+        let x_max = d3.max(data, function(d) { return d.x; })
+        let y_max = d3.max(data, function(d) { return d.y; })
+        let global_max = d3.max([x_max, y_max]) * 1.05
+        x.domain([0.1, global_max]);
+        y.domain([0.1, global_max]);
+        var valueline = d3.line()
+            .x(function(d) { return x(d.x); })
+            .y(function(d) { return y(d.y); });
+
+        svg.selectAll("dot").data(data)
+            .enter().append("circle").attr('class', 'genes').attr('id', function(d){return 'g_'+d.gene.replace('.', '_')})
+                .style('stroke', 'navy')
+                .style('fill', 'lightblue')
+                .style('opacity', .5)
+                .attr("r", 2.5)
+                .attr("cx", function(d) { return x(d.x); })
+                .attr("cy", function(d) { return y(d.y); });
+
+        let middle_line_data = [{x:0.1, y:0.1},{x:global_max, y:global_max}]
+        let upper_line_data = [{x:0.1, y:1},{x:global_max-1, y:global_max}]
+        svg.append("path")
+          .data([middle_line_data])
+          .attr("class", "line")
+          .attr("d", valueline);
+        svg.append("path")
+          .data([upper_line_data])
+          .attr("class", "line")
+          .attr("d", valueline);
+        d3.selectAll('.line')
+            .style('fill', 'black')
+            .style('stroke', 'black')
+
+        //x-axis
+        svg.append("g")
+          .attr("transform", "translate(0," + height + ")")
+          .call(d3.axisBottom(x));
+        //y-axis
+        svg.append("g")
+          .call(d3.axisLeft(y));
+
+    }
+
+
+</script>

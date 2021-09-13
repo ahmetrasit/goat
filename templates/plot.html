@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}GOAT{% endblock %}
+
+{% block center %}
+    {% for name, path in plot_templates %}
+        <a href="plot/{{ path }}">{{ name }}</a>
+    {% endfor %}
+{% endblock %}
+
+
+{% block left %}{% endblock %}
+{% block right %}{% endblock %}

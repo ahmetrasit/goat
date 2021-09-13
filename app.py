@@ -3,6 +3,7 @@ from process import Process
 from preprocess import Preprocess
 from plot import Plot
 import logging
+import re
 
 import subprocess
 import multiprocessing
@@ -88,10 +89,54 @@ def preview(groupA, groupB, operation):
     return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b)})
 
 
+@app.route("/plot")
+def plot():
+    template_list = getPlotTemplateList()
+    return render_template('plot.html', plot_templates=template_list)
+
+
+@app.route("/getDataPair/<fileA>/<fileB>/<folder>")
+def getDataPair(fileA, fileB, folder):
+    def getConverter(data, id_type, converters):
+        if id_type == 'name':
+            return {gene:gene for gene in data}
+        curr_cunverter = converters[f'{id_type}2name']
+        return {gene:curr_cunverter[gene] if gene in curr_cunverter else gene for gene in data}
+
+    pair = []
+    data_a = getData(fileA, folder)
+    data_b = getData(fileB, folder)
+    id_sets, converters = process_instance.prepIdSetsWithConverters()
+    id_type_a, perc_common_a = process_instance.getIdType(id_sets, data_a)
+    id_type_b, perc_common_b = process_instance.getIdType(id_sets, data_b)
+    converter_a = getConverter(data_a, id_type_a, converters)
+    converter_b = getConverter(data_b, id_type_b, converters)
+
+    for gene in set(data_a.keys()) | set(data_b.keys()):
+        pair.append({'gene':converter_a[gene] if gene in converter_a else converter_b[gene], 'x':round(data_a[gene], 1)+0.1 if gene in data_a else 0.1, 'y':round(data_b[gene], 1)+0.1 if gene in data_b else 0.1})
+
+    return jsonify(pair)
+
+
+@app.route("/plot/<plot_name>")
+def plotSelected(plot_name):
+    template_list = getPlotTemplateList()
+    binned_file_list = getFileList(['binned'])
+    gene_file_list = getFileList(['genelist'])
+    return render_template('plot_custom.html', selected_plot=plot_name, plot_templates=template_list, main_file_list=binned_file_list, gene_file_list=gene_file_list)
+
+
 @app.route("/annotate")
 def annotate():
     file_list = getFileList()
     return render_template('annotate.html', data=file_list)
+
+
+@app.route("/getgenelist/<genelist>")
+def getGeneList(genelist):
+    id_sets = process_instance.prepIdSets()
+    gene_set = process_instance.getGeneListInLocusName(genelist, id_sets)
+    return jsonify(list(gene_set))
 
 
 @app.route("/getlist")
@@ -121,6 +166,16 @@ if __name__ == "__main__":
     app.logger.setLevel(gunicorn_logger.level)
     app.run(host='0.0.0.0', debug=True)
 
+####################################
+####################################
+
+def getData(file, folder):
+    try:
+        with open(f'{folder.replace("_", "/")}/{file}') as f:
+            data = json.load(f)
+            return data
+    except:
+        return []
 
 def getFileList(include_list=[]):
     try:
@@ -131,7 +186,6 @@ def getFileList(include_list=[]):
         return f'<p>Error somewhere</p>{e}'
     return [f'{parent}/{child}' for parent in parent2child for child in parent2child[parent]]
 
-
 def getOrigFolderList():
     try:
         parents = [folder for folder in os.listdir('./data/original')]
@@ -140,8 +194,6 @@ def getOrigFolderList():
         return f'<p>Error somewhere</p>{e}'
     return [f'original/{parent}/{child}' for parent in parent2child for child in parent2child[parent]]
 
-
-
 def getGeneSets():
     try:
         gene_set_list = [file.replace('.json', '') for file in os.listdir('./data/genelist') if file.endswith('json')]
@@ -149,8 +201,6 @@ def getGeneSets():
     except Exception as e:
         #print(f'Error getting gene sets: {e}')
         return []
-
-
 
 def organizeFileList(file_list):
     organized_list = []
@@ -164,3 +214,7 @@ def organizeFileList(file_list):
                 organized_list.append((file.split('/')[-1].replace('.json', ''), file))
         organized_list.append(('', ''))
     return organized_list
+
+
+def getPlotTemplateList():
+    return [(re.sub(r'\.html$', '', file).replace('_', ' '), re.sub(r'\.html$', '', file)) for file in os.listdir('templates/plot_templates')]

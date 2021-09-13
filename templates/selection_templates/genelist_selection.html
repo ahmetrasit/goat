@@ -1,0 +1,22 @@
+<div class="gene_file_list col"></div>
+
+{% block afterbody %}
+<script>
+    let gene_file_list = {{ gene_file_list | safe }}
+
+    function populateCheckBoxList(classname, list){
+        let gene_type_divs = d3.select('.'+classname).selectAll('div').data(list).enter()
+            .append('div').attr('class', 'form-check form-check-inline col')
+        gene_type_divs.append('input').on('click', geneListOnClick)
+            .attr('class', 'form-check-input gene_lists').attr('type', 'checkbox')
+            .attr('id', function(d,i){return d.toLowerCase()})
+            .attr('value', function(d,i){return d.toLowerCase()})
+            .attr('name', classname)
+        gene_type_divs.append('label').attr('class', 'form-check-label').html(function(d,i) {return d})
+    }
+
+    populateCheckBoxList('gene_file_list', gene_file_list.map(x=>x.split('/')[1].replace('.json', '')))
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,92 @@
+        <div class="row">
+            <div class="col-md-5 datasets border overflow-auto" style="height: 10em;"></div>
+            <div class="col-md-2 text-center">
+                <button type="button" class="btn-sm btn-warning p-1 m-1" onclick="addToGroupA()">>>> Group A</button>
+                <button type="button" class="btn-sm btn-info p-1 m-1" onclick="addToGroupB()">>>> Group B</button>
+            </div>
+            <div class="col-md-5">
+                <div>
+                    <span class="h5">Group A</span> <input type="text" style="font-style: italic" id="groupA_title">
+                    <div id="groupA" class="p-1">Not selected</div>
+                </div>
+                <div>
+                    <span class="h5">Group B</span> <input type="text" style="font-style: italic" id="groupA_title">
+                    <div id="groupB" class="p-1">Not selected</div>
+                </div>
+            </div>
+        </div>
+{% block afterbody %}
+    <script>
+        let selected = null;
+        let groupA = null;
+        let groupB = null;
+        let ruleGroups = [];
+
+        function darken(){
+            d3.selectAll('.dataset').style('background', 'white')
+            d3.select('#'+this.id).style('background', 'lightgray')
+        }
+
+        function lighten(){
+            d3.selectAll('.dataset').style('background', 'white')
+        }
+
+        function choose(){
+            d3.selectAll('.dataset').style('font-weight', 'normal')
+            d3.select('#'+this.id).style('font-weight', 'bold')
+            selected = this.id
+        }
+
+        function addToGroupA(){
+            groupA = selected;
+            if(groupA !== groupB){
+                selected = null;
+                let html = d3.select('#'+groupA).html()
+                let path = d3.select('#'+groupA).attr('path')
+                d3.select('#groupA').html(html).attr('path', path)
+                d3.select('#input_groupA').attr('value', path)
+                d3.selectAll('.dataset').style('font-weight', 'normal')
+                populateDatasetList(main_file_list)
+            }
+        }
+
+        function addToGroupB(){
+            groupB = selected;
+            if(groupA !== groupB) {
+                selected = null;
+                let html = d3.select('#' + groupB).html()
+                let path = d3.select('#' + groupB).attr('path')
+                d3.select('#groupB').html(html).attr('path', path)
+                d3.select('#input_groupB').attr('value', path)
+                d3.selectAll('.dataset').style('font-weight', 'normal')
+                populateDatasetList(main_file_list)
+            }
+        }
+    </script>
+    <script>
+        let main_file_list = {{ main_file_list | safe}};
+        function populateDatasetList(data){
+            d3.select('.datasets').selectAll('div').remove();
+            d3.select('.datasets').selectAll('div').data(main_file_list).enter()
+                .append('div')
+                    //.attr('class', 'dataset')
+                    .attr('id', function(d,i){return 'dataset_'+i})
+                    .on('mouseover', darken)
+                    .on('click', choose)
+                    .html(function(d){return d.split('/')[1]})
+                    .attr('path', function(d){return d})
+                    .attr('class', function(d,i){
+                        let curr_dataset = 'dataset_'+i
+                        if(curr_dataset==groupA || curr_dataset==groupB){
+                            return 'dataset selected text-muted';
+                        }else{
+                            return 'dataset';
+                        }
+                    })
+            d3.selectAll('div.selected').style('font-style', 'italic')
+        }
+
+        populateDatasetList(main_file_list)
+    </script>
+
+{% endblock %}

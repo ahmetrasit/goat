@@ -321,6 +321,17 @@ class Process:
                 id_sets[curr] = set(json.load(f).keys())
         return id_sets
 
+    def prepIdSetsWithConverters(self):
+        id_sets = {}
+        converters = {}
+        for curr in ['alias2name', 'name2gene', 'gene2name']:
+            with open(f'mappers/{curr}.json') as f:
+                curr_data = json.load(f)
+                id_sets[curr] = set(curr_data.keys())
+                converters[curr] = curr_data
+        return id_sets, converters
+
+
 
     def getIdType(self, id_sets, gene_set):
         max = 0
@@ -355,6 +366,12 @@ class Process:
         with open(f'mappers/{origin}2{target}.json') as f:
             converter = json.load(f)
         return set([converter[gene] for gene in genes if gene in converter])
+
+
+    def getConverter(self, origin, target):
+        with open(f'mappers/{origin}2{target}.json') as f:
+            converter = json.load(f)
+        return converter
 
 
     def saveFile(self, filename, data):

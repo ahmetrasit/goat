@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}GOAT{% endblock %}
+
+{% block center %}
+    {{selected_plot}}
+    	{% include "plot_templates/"+selected_plot+".html" %}
+
+{% endblock %}
+
+
+{% block left %}{% endblock %}
+{% block right %}{% endblock %}
