@@ -20,6 +20,8 @@ import os
 import json
 
 app = Flask(__name__)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/kkk'
 
 

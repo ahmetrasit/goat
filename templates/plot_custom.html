@@ -6,7 +6,8 @@
     	{% include "plot_templates/"+selected_plot+".html" %}
 
 {% endblock %}
+{% block right %}
+    <div style="margin-top:25em;">Current gene</div>
+    <div id="selected_genes"></div>
+{% endblock %}
 
-
-{% block left %}{% endblock %}
-{% block right %}{% endblock %}
