@@ -348,6 +348,11 @@ class Process:
             id2type = json.load(f)
         return set([gene for gene in gene_set if gene in id2type and id2type[gene] in selected_gene_types])
 
+    def getTypeDict(self, id_type):
+        with open(f'mappers/{id_type}2type.json') as f:
+            converter = json.load(f)
+            return converter
+
 
     def filterByGeneSets(self, gene_set, id_type, selected_gene_sets, id_sets):
         genes_in_selected_sets = set([])

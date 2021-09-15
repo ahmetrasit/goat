@@ -56,7 +56,7 @@ def home():
 def filter():
     # add ppm filter
     # add gene type filter
-    orig_file_list = getOrigFolderList()
+    orig_file_list = sorted(getOrigFolderList())
     file_list = getFileList(['original', 'filtered'])
     return render_template('filter.html', data=file_list+orig_file_list)
 
@@ -113,9 +113,14 @@ def getDataPair(fileA, fileB, folder):
     id_type_b, perc_common_b = process_instance.getIdType(id_sets, data_b)
     converter_a = getConverter(data_a, id_type_a, converters)
     converter_b = getConverter(data_b, id_type_b, converters)
+    type_converter = process_instance.getTypeDict('name')
 
     for gene in set(data_a.keys()) | set(data_b.keys()):
-        pair.append({'gene':converter_a[gene] if gene in converter_a else converter_b[gene], 'x':round(data_a[gene], 1)+0.1 if gene in data_a else 0.1, 'y':round(data_b[gene], 1)+0.1 if gene in data_b else 0.1})
+        converted_gene_name = converter_a[gene] if gene in converter_a else converter_b[gene]
+        pair.append({'gene':converted_gene_name,
+                     'type':type_converter[converted_gene_name] if converted_gene_name in type_converter else 'NA',
+                     'x':round(data_a[gene], 1)+0.1 if gene in data_a else 0.1,
+                     'y':round(data_b[gene], 1)+0.1 if gene in data_b else 0.1})
 
     return jsonify(pair)
 

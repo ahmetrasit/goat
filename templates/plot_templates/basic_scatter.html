@@ -37,8 +37,25 @@ denem
             $('#processingModal').modal('hide')
         }
         $('#processingModal').modal('hide')
+    }
 
-
+    let curr_selected_type = null
+    function geneTypeOnClick(d,selected_gene_type){
+        console.log(d,selected_gene_type)
+        let fileA = d3.select('#'+groupA).html()
+        let fileB = d3.select('#'+groupB).html()
+        let is_checked = d3.select('#'+selected_gene_type).property('checked')
+        console.log(is_checked, selected_gene_type)
+        if(is_checked){
+            d3.selectAll('.gene_types').property('checked', false)
+            d3.select('#'+selected_gene_type).property('checked', true)
+            curr_selected_type = selected_gene_type
+            plotScatter(data_cache[fileA+'|'+fileB].filter(d => d.type===selected_gene_type))
+        }else{
+            curr_selected_type = null;
+            plotScatter(data_cache[fileA+'|'+fileB]);
+            $('#processingModal').modal('hide')
+        }
     }
 </script>
 {% include "selection_templates/pair_selection.html" %}
@@ -55,26 +72,62 @@ denem
     <span class="btn btn-primary form-control mb-5" onclick="plotScatterMain()">Create Plot</span>
 </div>
 
-<div id="genelist_selection_div" style="display:none">
+<div id="genelist_selection_div" style="display:none" class="mt-3">
+    <span class="h5">Gene Sets to highlight data</span>
     {% include "selection_templates/genelist_selection.html" %}
 </div>
 
+<div id="genetype_selection_div" style="display:none" class="mt-3">
+    <span class="h5">Gene Types to filter data</span>
+</div>
 
+<div id="selected_genes" class="h5"></div>
 <div class="col-md-12">
     <div class="svg" id="svg"></div>
 </div>
 <script>
     //Cache
-    data_cache = {}
-    genelist_cache = {}
+    var data_cache = {}
+    var genelist_cache = {}
+    var gene2type = {}
+    var type2genes = {}
 </script>
 <script>
-    var div_width = document.getElementById('svg').clientWidth
-    var margin = {top: 10, right: 10, bottom: 40, left: 40},
+    var div_width = document.getElementById('svg').clientWidth * .7
+    var margin = {top: 10, right: 10, bottom: 50, left: 50},
     width = div_width - margin.left - margin.right,
     height = div_width - margin.top - margin.bottom;
     var x = null;
     var y = null;
+
+    function prepGeneTypeFilter(data){
+        for (i in data){
+            gene2type[data[i].gene] = data[i].type
+            if (type2genes[data[i].type]){
+                type2genes[data[i].type].push(data[i].gene)
+            }else{
+                type2genes[data[i].type] = [data[i].gene]
+            }
+
+        }
+        let genetype_div = d3.select('#genetype_selection_div').style('display', 'block')
+        genetype_div.selectAll('.genetype_selection_select').remove()
+        genetype_div.append('div').attr('class', 'genetype_selection_select')
+        populateGeneTypeCheckBox('genetype_selection_select', Object.keys(type2genes))
+
+
+    }
+
+    function populateGeneTypeCheckBox(classname, list){
+        let gene_type_divs = d3.select('.'+classname).selectAll('div').data(list).enter()
+            .append('div').attr('class', 'form-check form-check-inline col')
+        gene_type_divs.append('input').on('click', geneTypeOnClick)
+            .attr('class', 'form-check-input gene_types').attr('type', 'checkbox')
+            .attr('id', function(d,i){return d})
+            .attr('value', function(d,i){return d})
+            .attr('name', classname)
+        gene_type_divs.append('label').attr('class', 'form-check-label').html(function(d,i) {return d})
+    }
 
     function plotScatterMain(){
         if(groupA && groupB){
@@ -103,6 +156,7 @@ denem
                         data_cache[fileA+'|'+fileB] = data;
                         plotScatter(data);
                         d3.select('#genelist_selection_div').style('display', 'block')
+                        prepGeneTypeFilter(data)
                         $('#processingModal').modal('hide')
                 })
             }
@@ -115,6 +169,8 @@ denem
 
     function plotScatter(data){
         d3.selectAll('.gene_lists').property('checked', false)
+        d3.selectAll('.gene_types').property('checked', false)
+
         d3.select('.svg').selectAll('svg').remove()
 
 
@@ -122,7 +178,7 @@ denem
                     .attr("width", width + margin.left + margin.right)
                     .attr("height", height + margin.top + margin.bottom)
                     .style('background', 'ivory')
-        var g = svg.append("g")
+                .append("g")
                     .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
 
@@ -147,8 +203,8 @@ denem
                 .attr("cy", function(d) { return y(d.y); });
 
         let middle_line_data = [{x:0.1, y:0.1},{x:global_max, y:global_max}]
-        let upper_line_data = [{x:.5, y:1},{x:global_max/2, y:global_max}]
-        let lower_line_data = [{x:1, y:.5},{x:global_max, y:global_max/2}]
+        let upper_line_data = [{x:.1, y:.2},{x:global_max/2, y:global_max}]
+        let lower_line_data = [{x:.2, y:.1},{x:global_max, y:global_max/2}]
         svg.append("path")
           .data([middle_line_data])
           .attr("class", "mid_line")
@@ -179,11 +235,11 @@ denem
             .style('stroke-width', '2px')
 
         //x-axis
-        svg.append("g")
+        svg.append("g").attr('class', 'x axis')
           .attr("transform", "translate(0," + height + ")")
           .call(d3.axisBottom(x));
         //y-axis
-        svg.append("g")
+        svg.append("g").attr('class', 'y axis')
           .call(d3.axisLeft(y));
 
 
@@ -197,7 +253,6 @@ denem
             groupB_label = d3.select('#'+groupB).html().split('_')[0]
         }
 
-        console.log(groupA_label, groupB_label)
 
         //axis labels
         //x-axis label
@@ -218,23 +273,12 @@ denem
             .style("text-anchor", "middle")
             .text(groupB_label);
 
-        var zoom = d3.zoom()
-              .scaleExtent([1, 8])
-              .on('zoom', function(event) {
-                  svg.selectAll('circle')
-                   .attr('transform', event.transform);
-                  svg.selectAll('path')
-                   .attr('transform', event.transform);
-        });
-        svg.call(zoom)
     }
 
     function showGene(d, i){
-        console.log(i)
         let url = 'http://smallrna.umassmed.edu/jbrowse/?tracks=DNA%2CGenes%2CRepeats%2CTransposons&loc='+i.gene
         let href = '<a target="_blank" href="'+url+'">'+i.gene+'</a>'
         d3.select('#selected_genes').html(href)
     }
-
 </script>
 
