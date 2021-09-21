@@ -2,6 +2,10 @@
 {% block title %}GOAT{% endblock %}
 
 {% block center %}
+    <div class="jumbotron mt-3 mb-2">
+      <h1 class="display-4">Plot Data</h1>
+      <p class="lead">Click the type of graph you want to create</p>
+    </div>
     {% for name, path in plot_templates %}
         <a href="plot/{{ path }}">{{ name }}</a>
     {% endfor %}

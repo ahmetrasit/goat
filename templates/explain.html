@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Discover Origins{% endblock %}
+{% block center %}
+    <div class="jumbotron mt-3 mb-2">
+      <h1 class="display-4">Discover Origins</h1>
+      <p class="lead">Compare selected gene list and display its shared composition with the rest of the gene lists.</p>
+    </div>
+    <div class="row">
+         <div class="col-md-12">
+            <div class="input-group">
+                <select name="genelists" id="genelists" class="form-control">
+                </select>
+                <span class="input-group-text btn btn-primary" onclick="updateGeneListGraph()">Discover Origin!</span>
+            </div>
+        </div>
+        <div class="col-md-12" id="explanation"></div>
+    </div>
+
+
+{% endblock %}
+{% block afterbody %}
+    <script>
+        function updateGeneListGraph(){
+            let result = {}
+            let selected_genelist = d3.select('#genelists option:checked').attr('value')
+            let selected_genes = name2genelist[selected_genelist]
+            for(let curr_genelist of genelist_names.filter(name => name !== selected_genelist)){
+                let second_commons = []
+                let curr_genes = name2genelist[curr_genelist]
+                let common_genes = curr_genes.filter(gene => selected_genes.includes(gene))
+                for(rest_genelist of genelist_names.filter(name => name !== selected_genelist && name !== curr_genelist)){
+                    let second_common = common_genes.filter(gene => name2genelist[rest_genelist].includes(gene))
+                    second_commons.push([second_common.length, rest_genelist])
+                }
+
+                result[curr_genelist] = {'common':common_genes.length, 'total':curr_genes.length, 'second_commons':second_commons.sort(function(a,b){return b[0], a[0]})}
+            }
+            d3.select('#explanation').selectAll('.numbers').remove()
+            d3.select('#explanation').append('h4').attr('class', 'numbers').html(selected_genes.length + ' genes in the genelist, shared with:')
+            let output = d3.select('#explanation').selectAll('div').data(Object.keys(result).sort(function(a,b){return result[b].common-result[a].common})).enter()
+                .append('div').attr('class', 'numbers mb-2')
+            output.append('h5').text(function(d,i){return d+': '+result[d]['common'] + '/' + name2genelist[d].length})
+
+            output.selectAll('div').data(function(d,i) {
+                return result[d]['second_commons'].sort(function(a,b){return b[0]-a[0]}).slice(0,5)
+            }).enter()
+                .append('div').text(function(d,i){return d[1]+': '+d[0] + '/' + name2genelist[d[1]].length})
+        }
+
+
+        let name2genelist = {{ data | safe}};
+        let genelist_names = Object.keys(name2genelist);
+
+        d3.select('#genelists').selectAll('option').data(genelist_names).enter()
+            .append('option')
+                .attr('value', function(d,i){return d})
+                .text(function(d,i){return d})
+
+
+
+
+
+    </script>
+{% endblock %}
+
+

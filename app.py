@@ -133,6 +133,20 @@ def plotSelected(plot_name):
     return render_template('plot_custom.html', selected_plot=plot_name, plot_templates=template_list, main_file_list=binned_file_list, gene_file_list=gene_file_list)
 
 
+@app.route("/discover")
+def discover():
+    file_list = getFileList(['genelist'])
+    genelist2data = prepGeneLists(path.split('/')[-1].replace('.json', '') for path in file_list)
+    return render_template('explain.html', data=genelist2data)
+
+def prepGeneLists(genelists):
+    list2genes = {}
+    id_sets = process_instance.prepIdSets()
+    for genelist in genelists:
+        list2genes[genelist] = list(process_instance.getGeneListInLocusName(genelist, id_sets))
+    return list2genes
+
+
 @app.route("/annotate")
 def annotate():
     file_list = getFileList()
@@ -191,7 +205,7 @@ def getFileList(include_list=[]):
         parent2child = {parent:[folder for folder in os.listdir(f'./data/{parent}')] for parent in parents}
     except Exception as e:
         return f'<p>Error somewhere</p>{e}'
-    return [f'{parent}/{child}' for parent in parent2child for child in parent2child[parent]]
+    return [f'{parent}/{child}' for parent in parent2child for child in sorted(parent2child[parent])]
 
 def getOrigFolderList():
     try:

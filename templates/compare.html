@@ -2,6 +2,10 @@
 {% block title %}Compare Datasets{% endblock %}
 
 {% block center %}
+    <div class="jumbotron mt-3 mb-2">
+      <h1 class="display-4">Compare data and create gene lists</h1>
+      <p class="lead">Create gene lists by defining custom rules, like enrichment.</p>
+    </div>
     <form action="/" method="post">
         <input type="hidden" name="type" value="compare">
         <input type="hidden" id="input_groupA" name="groupA" value="">

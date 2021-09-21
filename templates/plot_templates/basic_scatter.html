@@ -2,7 +2,6 @@
   <h1 class="display-4">2-Sample Scatter Plot</h1>
   <p class="lead">Select two datasets to create a scatter plot. Use gene filters to highlight selected gene classes.</p>
 </div>
-denem
 <script>
     let curr_selected = null
     function geneListOnClick(d,selected_gene_list){
@@ -11,7 +10,11 @@ denem
         console.log(is_checked, selected_gene_list)
         if(is_checked){
             if (curr_selected){
-                genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_')).style('fill', 'lightblue'));
+                genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                    .style('fill', 'lightblue')
+                    .style('opacity', 0.5)
+                    .style('r', 2.5)
+                );
             }
             d3.selectAll('.gene_lists').property('checked', false)
             d3.select('#'+selected_gene_list).property('checked', true)
@@ -21,18 +24,31 @@ denem
             console.log(selected)
             if(selected in genelist_cache){
                 console.log(genelist_cache[selected].length);
-                genelist_cache[selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_')).style('fill', 'tomato'));
+                genelist_cache[selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                    .style('r', 3.5)
+                    .style('fill', 'tomato')
+                    .style('opacity', 0.7)
+
+                );
                 $('#processingModal').modal('hide')
             }else{
                 d3.json('/getgenelist/'+selected).then(function(data){
                     console.log(data.length);
                     genelist_cache[selected] = data;
-                    data.forEach(gene => d3.select('#g_'+gene.replace('.', '_')).style('fill', 'tomato'));
+                    data.forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                        .style('fill', 'tomato')
+                        .style('r', 3.5)
+                        .style('opacity', 0.7)
+                    );
                     $('#processingModal').modal('hide')
                 })
             }
         }else{
-            genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_')).style('fill', 'lightblue'));
+            genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                .style('fill', 'lightblue')
+                .style('opacity', 0.5)
+                .style('r', 2.5)
+            );
             curr_selected = null;
             $('#processingModal').modal('hide')
         }

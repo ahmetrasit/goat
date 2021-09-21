@@ -2,6 +2,10 @@
 {% block title %}Bin to Genes{% endblock %}
 
 {% block center %}
+    <div class="jumbotron mt-3 mb-2">
+      <h1 class="display-4">Bin smallRNA reads into genes</h1>
+      <p class="lead">Get accumulated read counts per gene, optionally filter by gene type or defined gene lists.</p>
+    </div>
     <form action="/" method="post">
         <input type="hidden" name="type" value="bin">
 

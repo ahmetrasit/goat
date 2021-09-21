@@ -2,6 +2,10 @@
 {% block title %}Set Operations{% endblock %}
 
 {% block center %}
+    <div class="jumbotron mt-3 mb-2">
+      <h1 class="display-4">Set Operations</h1>
+      <p class="lead">Find intersection, union, and difference between two selected gene list.</p>
+    </div>
     <form action="/" method="post">
         <input type="hidden" name="type" value="setops">
         <input type="hidden" id="input_groupA" name="groupA" value="">
@@ -28,6 +32,8 @@
         <div class="mt-3">Give a name to save<input type="text" name="save"></div>
         <input type="submit">
     </form>
+
+    <a href="discover">Alternatively, explore origins of a gene list</a>
 {% endblock %}
 {% block afterbody %}
     <script>
