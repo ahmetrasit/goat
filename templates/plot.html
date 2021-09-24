@@ -7,7 +7,10 @@
       <p class="lead">Click the type of graph you want to create</p>
     </div>
     {% for name, path in plot_templates %}
-        <a href="plot/{{ path }}">{{ name }}</a>
+        <div>
+            <a href="plot/{{ path }}">{{ name }}</a>
+        </div>
+
     {% endfor %}
 {% endblock %}
 

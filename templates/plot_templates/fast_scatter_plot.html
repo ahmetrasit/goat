@@ -1,0 +1,328 @@
+<div class="jumbotron">
+  <h1 class="display-4">2-Sample Scatter Plot</h1>
+  <p class="lead">Select two datasets to create a scatter plot. Use gene filters to highlight selected gene classes.</p>
+</div>
+<script>
+    let curr_selected = null
+    function geneListOnClick(d,selected_gene_list){
+        //$('#processingModal').modal('show')
+        let is_checked = d3.select('#'+selected_gene_list).property('checked')
+        console.log(is_checked, selected_gene_list)
+        if(is_checked){
+            if (curr_selected){
+                genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                    .style('fill', 'lightblue')
+                    .style('opacity', 0.5)
+                    .style('r', 2.5)
+                );
+            }
+            d3.selectAll('.gene_lists').property('checked', false)
+            d3.select('#'+selected_gene_list).property('checked', true)
+            curr_selected = selected_gene_list
+            let selected = selected_gene_list.toLowerCase()
+
+            console.log(selected)
+            if(selected in genelist_cache){
+                console.log(genelist_cache[selected].length);
+                genelist_cache[selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                    .style('r', 3.5)
+                    .style('fill', 'tomato')
+                    .style('opacity', 0.7)
+
+                );
+                $('#processingModal').modal('hide')
+            }else{
+                d3.json('/getgenelist/'+selected).then(function(data){
+                    console.log(data.length);
+                    genelist_cache[selected] = data;
+                    data.forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                        .style('fill', 'tomato')
+                        .style('r', 3.5)
+                        .style('opacity', 0.7)
+                    );
+                    $('#processingModal').modal('hide')
+                })
+            }
+        }else{
+            genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
+                .style('fill', 'lightblue')
+                .style('opacity', 0.5)
+                .style('r', 2.5)
+            );
+            curr_selected = null;
+            $('#processingModal').modal('hide')
+        }
+        $('#processingModal').modal('hide')
+    }
+
+    let curr_selected_type = null
+    function geneTypeOnClick(d,selected_gene_type){
+        console.log(d,selected_gene_type)
+        let fileA = d3.select('#'+groupA).html()
+        let fileB = d3.select('#'+groupB).html()
+        let is_checked = d3.select('#'+selected_gene_type).property('checked')
+        console.log(is_checked, selected_gene_type)
+        if(is_checked){
+            d3.selectAll('.gene_types').property('checked', false)
+            d3.select('#'+selected_gene_type).property('checked', true)
+            curr_selected_type = selected_gene_type
+            plotScatter(data_cache[fileA+'|'+fileB].filter(d => d.type===selected_gene_type))
+        }else{
+            curr_selected_type = null;
+            plotScatter(data_cache[fileA+'|'+fileB]);
+            $('#processingModal').modal('hide')
+        }
+    }
+</script>
+{% include "selection_templates/pair_selection.html" %}
+
+<div class="input-group mt-3">
+    <div>
+        <select class="form-control form-select" id="scale_selection">
+        <option value="log">Log Scale</option>
+        <option value="linear">Linear Scale</option>
+    </select>
+    </div>
+    <div>
+        <input type="text" class="form-control" id="bin_size" value="50">
+    </div>
+    <span class="btn btn-primary form-control mb-5" onclick="plotScatterMain()">Create Plot</span>
+</div>
+
+<div id="genelist_selection_div" style="display:none" class="mt-3">
+    <span class="h5">Gene Sets to highlight data</span>
+    {% include "selection_templates/genelist_selection.html" %}
+</div>
+
+<div id="genetype_selection_div" style="display:none" class="mt-3">
+    <span class="h5">Gene Types to filter data</span>
+</div>
+
+<div id="selected_genes" class="h5"></div>
+<div class="col-md-12">
+    <div class="svg" id="svg"></div>
+</div>
+<script>
+    //Cache
+    var data_cache = {}
+    var genelist_cache = {}
+    var gene2type = {}
+    var type2genes = {}
+</script>
+<script>
+    var div_width = document.getElementById('svg').clientWidth * .7
+    var margin = {top: 10, right: 10, bottom: 50, left: 50},
+    width = div_width - margin.left - margin.right,
+    height = div_width - margin.top - margin.bottom;
+    var x = null;
+    var y = null;
+
+    function prepGeneTypeFilter(data){
+        for (i in data){
+            gene2type[data[i].gene] = data[i].type
+            if (type2genes[data[i].type]){
+                type2genes[data[i].type].push(data[i].gene)
+            }else{
+                type2genes[data[i].type] = [data[i].gene]
+            }
+
+        }
+        let genetype_div = d3.select('#genetype_selection_div').style('display', 'block')
+        genetype_div.selectAll('.genetype_selection_select').remove()
+        genetype_div.append('div').attr('class', 'genetype_selection_select')
+        populateGeneTypeCheckBox('genetype_selection_select', Object.keys(type2genes))
+
+
+    }
+
+    function populateGeneTypeCheckBox(classname, list){
+        let gene_type_divs = d3.select('.'+classname).selectAll('div').data(list).enter()
+            .append('div').attr('class', 'form-check form-check-inline col')
+        gene_type_divs.append('input').on('click', geneTypeOnClick)
+            .attr('class', 'form-check-input gene_types').attr('type', 'checkbox')
+            .attr('id', function(d,i){return d})
+            .attr('value', function(d,i){return d})
+            .attr('name', classname)
+        gene_type_divs.append('label').attr('class', 'form-check-label').html(function(d,i) {return d})
+    }
+
+    function plotScatterMain(){
+        if(groupA && groupB){
+            $('#processingModal').modal('show')
+            sleep(500)
+            let fileA = d3.select('#'+groupA).html()
+            let fileB = d3.select('#'+groupB).html()
+            let scale = d3.select('#scale_selection').property('value')
+
+            if(scale==='log'){
+                x = d3.scaleLog().range([0.1, width]).base(2);
+                y = d3.scaleLog().range([height, 0.1]).base(2);
+
+            }else{
+                x = d3.scaleLinear().range([0.1, width]);
+                y = d3.scaleLinear().range([height, 0.1]);
+            }
+
+            console.log(fileA, fileB);
+            if (fileA+'|'+fileB in data_cache){
+                plotScatter(data_cache[fileA+'|'+fileB]);
+                d3.select('#genelist_selection_div').style('display', 'block')
+                $('#processingModal').modal('hide')
+            }else{
+                data = d3.json('/getDataPair/'+fileA+'/'+fileB+'/data_binned').then(function(data){
+                        data_cache[fileA+'|'+fileB] = data;
+                        plotScatter(data);
+                        d3.select('#genelist_selection_div').style('display', 'block')
+                        prepGeneTypeFilter(data)
+                        $('#processingModal').modal('hide')
+                })
+            }
+            $('#processingModal').modal('hide')
+        }else{
+            alert('Please choose data files for both Group A and Group B')
+        }
+        $('#processingModal').modal('hide')
+    }
+
+    function plotScatter(data){
+        d3.selectAll('.gene_lists').property('checked', false)
+        d3.selectAll('.gene_types').property('checked', false)
+        d3.select('.svg').selectAll('svg').remove()
+        let bin_size = d3.select('#bin_size').property('value')
+
+
+
+        var svg = d3.select(".svg").append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                    .style('background', 'ivory')
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+
+
+        let x_max = d3.max(data, function(d) { return d.x; })
+        let y_max = d3.max(data, function(d) { return d.y; })
+        let global_max = d3.max([x_max, y_max]) * 1.05
+        x.domain([0.1, global_max]);
+        y.domain([0.1, global_max]);
+        var valueline = d3.line()
+            .x(function(d) { return x(d.x); })
+            .y(function(d) { return y(d.y); });
+
+        binGenes(data, bin_size);
+
+        let upper_line_data = [{x:.1, y:.2},{x:global_max/2, y:global_max}]
+        let lower_line_data = [{x:.2, y:.1},{x:global_max, y:global_max/2}]
+
+        svg.append("path")
+          .data([upper_line_data])
+          .attr("class", "upper_line")
+          .attr("d", valueline);
+
+        svg.append("path")
+          .data([lower_line_data])
+          .attr("class", "lower_line")
+          .attr("d", valueline);
+
+        d3.selectAll('.upper_line')
+            .style('fill', 'purple')
+            .style('stroke', 'purple')
+            .style('stroke-width', '2px')
+
+        d3.selectAll('.lower_line')
+            .style('fill', 'green')
+            .style('stroke', 'green')
+            .style('stroke-width', '2px')
+
+        //x-axis
+        svg.append("g").attr('class', 'x axis')
+          .attr("transform", "translate(0," + height + ")")
+          .call(d3.axisBottom(x));
+        //y-axis
+        svg.append("g").attr('class', 'y axis')
+          .call(d3.axisLeft(y));
+
+
+        var groupA_label = document.getElementById('groupA_label').value
+        if (groupA_label.length < 1){
+            groupA_label = d3.select('#'+groupA).html().split('_')[0]
+        }
+
+        var groupB_label = document.getElementById('groupB_label').value
+        if (groupB_label.length < 1){
+            groupB_label = d3.select('#'+groupB).html().split('_')[0]
+        }
+
+
+        //axis labels
+        //x-axis label
+        svg.append("text")
+            .attr("transform",
+                "translate(" + (width/2) + " ," +
+                               (height + margin.top + 20) + ")")
+            .style("text-anchor", "middle")
+            .text(groupA_label);
+
+
+        //y-axis label
+        svg.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0 - margin.left)
+            .attr("x",0 - (height / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .text(groupB_label);
+
+    }
+
+    function showGene(d, i){
+        let url = 'http://smallrna.umassmed.edu/jbrowse/?tracks=DNA%2CGenes%2CRepeats%2CTransposons&loc='+i.gene
+        let href = '<a target="_blank" href="'+url+'">'+i.gene+'</a>'
+        d3.select('#selected_genes').html(href)
+    }
+
+
+    function binGenes(data, bin_size){
+        let bin2gene = {}
+        let step_diff = x.range()[1]/bin_size
+        step_diff = step_diff.toFixed(2)
+        for(let i=0; i<bin_size; i++){
+            for(let j=0; j<bin_size; j++){
+                bin2gene[i + '|' + j] = []
+            }
+        }
+        let max_gene_len = 0
+        for(datum of data){
+            let x_cat = parseInt(x(datum.x)/step_diff)
+            let y_cat = parseInt(x(datum.y)/step_diff)
+            bin2gene[x_cat + '|' + y_cat].push(datum.gene)
+            if(bin2gene[x_cat + '|' + y_cat].length > max_gene_len){
+                max_gene_len = bin2gene[x_cat + '|' + y_cat].length
+            }
+        }
+
+        let opacityScale = d3.scaleLog().range([0.3, 2]).domain([1, max_gene_len]);
+        let squares_with_data = Object.keys(bin2gene).filter(x=>bin2gene[x].length>0)
+        console.log(squares_with_data)
+
+        d3.select('svg').selectAll('rect').data(squares_with_data).enter()
+            .append('rect')
+                .attr('x', function(d,i){
+                    let val = d.split('|')[0];
+                    return val*step_diff+margin.left;
+                })
+                .attr('y', function(d,i){
+                    let val = bin_size - parseInt(d.split('|')[1]) - 1;
+                    return val*step_diff+margin.top;
+                })
+                .attr('width', step_diff)
+                .attr('height', step_diff)
+                .attr('stroke', 'red')
+                .attr('fill', 'tomato')
+                .attr('opacity', function(d,i){
+                    return opacityScale(bin2gene[d].length)
+                })
+    }
+</script>
+
