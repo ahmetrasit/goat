@@ -1,0 +1,45 @@
+<div id="genelist_selection_div" style="display:none" class="mt-3">
+    <span class="h5">Highlight Gene Types</span>
+    <div class="input-group">
+        <div class="gene_file_list col"></div>
+        <span class="btn btn-primary form-control mb-5" onclick="geneTypeOnClick()">Filter Gene Type</span>
+        <span class="btn btn-warning form-control mb-5 " onclick="geneTypeRemove()">Remove Filter</span>
+    </div>
+</div>
+
+
+{% block afterbody %}
+<script>
+    console.log('new')
+    let gene2type = {}
+    let type2genes = {}
+
+    function populateGeneTypeCheckBox(classname, list){
+        let gene_type_select = d3.select('.'+classname).append('select').on('click', geneTypeOnClick)
+                                    .attr('class', 'form-control')
+                                    .selectAll('option').data(list).enter()
+                                        .append('option')
+                                        .text(function(d,i){return d})
+                                        .attr('value', function(d,i){return d})
+    }
+
+    function prepGeneTypeFilter(data){
+        for (let i in data){
+            gene2type[data[i].gene] = data[i].type
+            if (type2genes[data[i].type]){
+                type2genes[data[i].type].push(data[i].gene)
+            }else{
+                type2genes[data[i].type] = [data[i].gene]
+            }
+        }
+        let genetype_div = d3.select('#genetype_selection_div').style('display', 'block')
+        genetype_div.selectAll('.genetype_selection_select').remove()
+        genetype_div.append('div').attr('class', 'genetype_selection_select')
+        populateGeneTypeCheckBox('genetype_selection_select', Object.keys(type2genes))
+    }
+
+    populateGeneFileSelect('gene_file_list', gene_file_list.map(x=>x.split('/')[1].replace('.json', '')))
+
+
+</script>
+{% endblock %}
