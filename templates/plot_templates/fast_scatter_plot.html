@@ -1,15 +1,19 @@
 <div class="jumbotron">
-  <h1 class="display-4">2-Sample Scatter Plot</h1>
+  <h1 class="display-4">2-Sample Tile Plot</h1>
   <p class="lead">Select two datasets to create a scatter plot. Use gene filters to highlight selected gene classes.</p>
 </div>
 <script>
     let curr_selected = null
+    let selected_bin2genes = {}
     let max_gene_len = 0
+    let sizeScale = null
 
     function geneListOnClick(d,selected_gene_list){
         //$('#processingModal').modal('show')
-        let curr_selected = d3.select('.gene_file_list').select('select option:checked').attr('value')
+        curr_selected = d3.select('.gene_file_list').select('select option:checked').attr('value')
         console.log('>', curr_selected)
+        d3.selectAll('.xhist_selected').remove()
+        d3.selectAll('.yhist_selected').remove()
 
         if(curr_selected in genelist_cache){
             console.log('in cache', genelist_cache[curr_selected].length);
@@ -24,9 +28,20 @@
         }
     }
 
+    function geneListRemove(){
+        d3.selectAll('.xhist_selected').remove()
+        d3.selectAll('.yhist_selected').remove()
+        d3.select('svg').selectAll('rect.genelist_rect').remove()
+        d3.select('svg').selectAll('rect.genelist_rect_guide').remove()
+        curr_selected = null;
+    }
+
     function highlightBins(data){
-        let selected_bin2genes = {}
-        let selected_bin2ratio = {}
+        selected_bin2genes = {};
+        let selected_bin2ratio = {};
+        let selected_xbin2gene_count = [];
+        let selected_ybin2gene_count = [];
+
         for(let gene of data){
             let curr_bin = curr_gene2bin[gene]
             if (!selected_bin2genes[curr_bin]) {
@@ -41,37 +56,53 @@
         for(let curr_bin of Object.keys(selected_bin2genes)){
             selected_bin2ratio[curr_bin] = selected_bin2genes[curr_bin].length / curr_bin2genes[curr_bin].length
         }
+        for(let k=0; k<bin_size; k++){
+            selected_xbin2gene_count[k]=0
+            selected_ybin2gene_count[k]=0
+        }
+        for(key of Object.keys(selected_bin2genes)){
+            let [i, j] = key.split('|')
+            selected_xbin2gene_count[i] += selected_bin2genes[key].length
+            selected_ybin2gene_count[j] += selected_bin2genes[key].length
+        }
+
 
         let step_diff = x.range()[1]/bin_size
         step_diff = parseFloat(step_diff.toFixed(2))
-        let sizeScale = d3.scaleLog().range([0.1*step_diff, step_diff]).domain([1, max_gene_len]);
-
+        let sizeScaleSelected = function(datum){ //tile is log scale, selected is linear to tile's area
+            let selected_gene_count = selected_bin2genes[datum].length
+            let tile_gene_count = curr_bin2genes[datum].length
+            let tile_width = sizeScale(tile_gene_count)
+            return (selected_gene_count/tile_gene_count)**.5 * tile_width
+        }
 
 
         d3.select('svg').selectAll('rect.genelist_rect').remove()
         d3.select('svg').selectAll('rect.genelist_rect_guide').remove()
         d3.select('svg').selectAll('rect.genelist_rect').data(Object.keys(selected_bin2ratio)).enter()
-            .append('rect').attr('class', 'genelist_rect')
+            .append('rect').attr('class', 'genelist_rect').on('click', listTileGenes)
                 .attr('x', function(d,i){
                     let val = parseInt(d.split('|')[0]);
-                    return val*step_diff + margin.left + step_diff - sizeScale(selected_bin2genes[d].length);
+                    //return val*step_diff + margin.left + step_diff - sizeScale(selected_bin2genes[d].length);
+                    return val*step_diff + margin.left;
                 })
                 .attr('y', function(d,i){
                     let val = parseInt(bin_size - parseInt(d.split('|')[1]) - 1);
-                    return val*step_diff + margin.top + step_diff - sizeScale(selected_bin2genes[d].length);
+                    //return val*step_diff + margin.top + step_diff - sizeScale(selected_bin2genes[d].length);
+                    return val*step_diff + margin.top;
                 })
-                .attr('width', function(d,i){return sizeScale(selected_bin2genes[d].length)})
-                .attr('height', function(d,i){return sizeScale(selected_bin2genes[d].length)})
-                .attr('stroke', 'firebrick').attr('stroke-width', .5)
+                .attr('width', function(d,i){return sizeScaleSelected(d)})
+                .attr('height', function(d,i){return sizeScaleSelected(d)})
+                .attr('stroke', 'firebrick').attr('stroke-width', 1)
                 .attr('fill', 'red')
                 .attr('opacity', function(d,i){
                     //return opacityScale(bin2gene[d].length)
-                    return .7
+                    return 1
                 });
 
 
         d3.select('svg').selectAll('rect.genelist_rect_guide').data(Object.keys(selected_bin2ratio)).enter()
-            .append('rect').attr('class', 'genelist_rect_guide')
+            .append('rect').attr('class', 'genelist_rect_guide').on('click', listTileGenes)
                 .attr('x', function(d,i){
                     let val = parseInt(d.split('|')[0]);
                     return val*step_diff + margin.left;
@@ -82,9 +113,39 @@
                 })
                 .attr('width',  step_diff)
                 .attr('height', step_diff)
-                .attr('stroke', 'firebrick').attr('stroke-width', 0.5)
-                .attr('fill', 'transparent')
-                .attr('opacity', 1);
+                .style('stroke', 'firebrick').style('stroke-width', 0.7)
+                .style('fill', 'gold')
+                .style('fill-opacity', .3)
+                .lower().lower().lower()
+
+
+        d3.select('svg').selectAll('rect.xhist_selected').data(selected_xbin2gene_count.map((e,i)=>[e,i])).enter()
+            .append('rect').attr('class', 'xhist_selected')
+                .on('mouseover', showVerticalBar).on('mouseout', removeBar)
+                .attr('x', function(d,i){
+                    return i * step_diff + margin.left;
+                })
+                .attr('y', function(d,i){return margin.top - xhistHeight(d[0]+1) - margin.top*.08})
+                .attr('width', step_diff)
+                .attr('height', function(d,i){return xhistHeight(d[0]+1)})
+                .attr('stroke', 'white')
+                .attr('fill', 'firebrickk')
+                .attr('opacity', 0.5)
+
+        d3.select('svg').selectAll('rect.yhist_selected').data(selected_ybin2gene_count.map((e,i)=>[e,i])).enter()
+            .append('rect').attr('class', 'yhist_selected')
+                .on('mouseover', showHorizontalBar).on('mouseout', removeBar)
+                .attr('y', function(d,i){
+                    return (bin_size - i - 1) * step_diff + margin.top;
+                })
+                .attr('x', width + margin.left + margin.right*0.08)
+                .attr('height', step_diff)
+                .attr('width', function(d,i){return yhistWidth(d[0]+1)})
+                .attr('stroke', 'white')
+                .attr('fill', 'firebrickk')
+                .attr('opacity', 0.5)
+
+
     }
 
     let curr_selected_type = null
@@ -114,7 +175,7 @@
     </select>
     </div>
     <div>
-        <input type="text" class="form-control" id="bin_size" value="81">
+        <input type="text" class="form-control" id="bin_size" value="53">
     </div>
     <span class="btn btn-primary form-control mb-5" onclick="plotScatterMain()">Create Plot</span>
 </div>
@@ -253,13 +314,16 @@
         if (groupB_label.length < 1){
             groupB_label = d3.select('#'+groupB).html().split('_')[0]
         }
+        console.log(groupA_label, groupB_label)
 
-        svg.append("text")
+
+        svg.append("text").attr('id', 'groupA_label_text')
             .attr("transform",
                 "translate(" + (width/2) + " ," +
-                               (height + margin.top + 20) + ")")
+                               (height + margin.top*.4) + ")")
             .style("text-anchor", "middle")
             .text(groupA_label);
+
         svg.append("text")
             .attr("transform", "rotate(-90)")
             .attr("y", 0 - margin.left)
@@ -381,11 +445,11 @@
         }
 
         let opacityScale = d3.scaleLog().range([0.3, 2]).domain([1, max_gene_len]);
-        let sizeScale = d3.scaleLog().range([0.1*step_diff, step_diff]).domain([1, max_gene_len]);
+        sizeScale = d3.scaleLog().range([0.1*step_diff, step_diff]).domain([1, max_gene_len]);
         let squares_with_data = Object.keys(bin2gene).filter(x=>bin2gene[x].length>0)
 
         d3.select('svg').selectAll('rect').data(squares_with_data).enter()
-            .append('rect')
+            .append('rect').on('click', listTileGenes)
                 .attr('x', function(d,i){
                     let val = d.split('|')[0];
                     return val*step_diff+margin.left;
@@ -400,9 +464,24 @@
                 .attr('fill', 'blue')
                 .attr('opacity', function(d,i){
                     //return opacityScale(bin2gene[d].length)
-                    return .6
+                    return 1
                 })
         return [bin2gene, gene2bin]
     }
+
+    function listTileGenes(m, d){
+        let selected_genes = []
+        console.log()
+        rest_genes = curr_bin2genes[d]
+        if(curr_selected){
+            if(d in selected_bin2genes){
+                selected_genes = selected_bin2genes[d];
+                rest_genes = rest_genes.filter(gene => !selected_bin2genes[d].includes(gene));
+            }
+        }
+        console.log('selected',selected_genes.length)
+        console.log('rest',rest_genes.length)
+    }
+
 </script>
 
