@@ -1,4 +1,4 @@
-<div id="genelist_selection_div" style="display:none" class="mt-3">
+<div id="genelist_selection_div" class="mt-3">
     <span class="h5">Highlight Gene Lists</span>
     <div class="input-group">
         <div class="gene_file_list col"></div>
@@ -12,19 +12,9 @@
 <script>
     let gene_file_list = {{ gene_file_list | safe }}
 
-    function populateCheckBoxList(classname, list){
-        let gene_type_divs = d3.select('.'+classname).selectAll('div').data(list).enter()
-            .append('div').attr('class', 'form-check form-check-inline col')
-        gene_type_divs.append('input')
-            .attr('class', 'form-check-input gene_lists').attr('type', 'checkbox')
-            .attr('id', function(d,i){return d.toLowerCase()})
-            .attr('value', function(d,i){return d.toLowerCase()})
-            .attr('name', classname)
-        gene_type_divs.append('label').attr('class', 'form-check-label').html(function(d,i) {return d})
-    }
 
     function populateGeneFileSelect(classname, list){
-        let gene_type_select = d3.select('.'+classname).append('select').on('click', geneListOnClick)
+        let gene_type_select = d3.select('.'+classname).append('select')
                                     .attr('class', 'form-control')
                                     .selectAll('option').data(list).enter()
                                         .append('option')
