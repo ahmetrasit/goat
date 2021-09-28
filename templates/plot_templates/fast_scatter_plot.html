@@ -150,8 +150,8 @@
 
     let curr_selected_type = null
     function geneTypeOnClick(d,selected_gene_type){
-        let fileA = d3.select('#'+groupA).html()
-        let fileB = d3.select('#'+groupB).html()
+        let fileA = d3.select('#groupA').html()
+        let fileB = d3.select('#groupB').html()
         let is_checked = d3.select('#'+selected_gene_type).property('checked')
         if(is_checked){
             d3.selectAll('.gene_types').property('checked', false)
@@ -211,11 +211,11 @@
 
 
     function plotScatterMain(){
-        if(groupA && groupB){
+        if(selectedGroups['A'] && selectedGroups['B']){
             $('#processingModal').modal('show')
             sleep(500)
-            let fileA = d3.select('#'+groupA).html()
-            let fileB = d3.select('#'+groupB).html()
+            let fileA = d3.select('#groupA').html()
+            let fileB = d3.select('#groupB').html()
             let scale = d3.select('#scale_selection').property('value')
 
             if(scale==='log'){
@@ -307,12 +307,12 @@
 
         var groupA_label = document.getElementById('groupA_label').value
         if (groupA_label.length < 1){
-            groupA_label = d3.select('#'+groupA).html().split('_')[0]
+            groupA_label = d3.select('#groupA').html().split('_')[0]
         }
 
         var groupB_label = document.getElementById('groupB_label').value
         if (groupB_label.length < 1){
-            groupB_label = d3.select('#'+groupB).html().split('_')[0]
+            groupB_label = d3.select('#groupB').html().split('_')[0]
         }
         console.log(groupA_label, groupB_label)
 

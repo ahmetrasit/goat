@@ -14,6 +14,8 @@
                 <div class="input-group">
                     <span class="input-group-text">Dataset</span>
                     <select name="dataset" id="datasets_select" class="form-control"></select>
+                    <span class="input-group-text">Filter by Keyword:</span>
+                    <input type="text" class="form-control" id="filter_dataset" onkeyup="filterDataset()">
                 </div>
             </div>
 
@@ -83,6 +85,20 @@
                  'transposon',
                  'transposon_protein_coding',
                  'transposon_pseudogene']
+
+
+    function filterDataset(){
+            //datasets_select
+            let keyword = document.getElementById('filter_dataset').value.trim().toLowerCase()
+            if (keyword){
+                d3.select('#datasets_select').selectAll('option').remove()
+                    d3.select('#datasets_select').selectAll('option').data(data.filter(file=>file.toLowerCase().includes(keyword))).enter()
+                    .append('option').text(function(d){return d})
+            }else{
+                d3.select('#datasets_select').selectAll('option').data(data).enter()
+                    .append('option').text(function(d){return d})
+            }
+        }
 
     function populateCheckBoxList(classname, list){
         let gene_type_divs = d3.select('.'+classname).selectAll('div').data(list).enter()

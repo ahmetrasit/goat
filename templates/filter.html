@@ -10,8 +10,10 @@
         <div class="row">
             <div class="col-md-12 pb-2">
                 <div class="input-group">
-                    <span class="input-group-text">Dataset</span>
-                    <select name="dataset" id="datasets_select" class="form-control"></select>
+                    <span class="input-group-text">Select Dataset</span>
+                    <select name="dataset" id="datasets_select" class="form-control" data-liveSearch="true"></select>
+                    <span class="input-group-text">Filter by Keyword:</span>
+                    <input type="text" class="form-control" id="filter_dataset" onkeyup="filterDataset()">
                 </div>
             </div>
 
@@ -82,6 +84,20 @@
 {% endblock %}
 {% block afterbody %}
     <script>
+        function filterDataset(){
+            //datasets_select
+            let keyword = document.getElementById('filter_dataset').value.trim().toLowerCase()
+            if (keyword){
+                d3.select('#datasets_select').selectAll('option').remove()
+                    d3.select('#datasets_select').selectAll('option').data(data.filter(file=>file.toLowerCase().includes(keyword))).enter()
+                    .append('option').text(function(d){return d})
+            }else{
+                d3.select('#datasets_select').selectAll('option').data(data).enter()
+                    .append('option').text(function(d){return d})
+            }
+        }
+
+
         let ruleGroups = [];
 
         function addSeqRuleGroup(){
@@ -155,7 +171,7 @@
                 .attr('onclick', "deleteRule('" + curr_rule_identifier + "')")
                 .html('Delete')
 
-            console.log(curr_rule_identifier)
+            //console.log(curr_rule_identifier)
             d3.select('form').append('input')
                 .attr('type', 'hidden')
                 .attr('name', 'hidden_'+curr_rule_identifier)
@@ -165,23 +181,23 @@
 
 
         function getRuleFromId(id){
-            console.log('grfi')
+            //console.log('grfi')
             let option_select = d3.select('#'+id).select('#option_select option:checked').text()
             let data_input = d3.select('#'+id).select('#data_input').property('value')
-            console.log([option_select, data_input].join(';'));
+            //console.log([option_select, data_input].join(';'));
             return [option_select, data_input].join(';')
 
         }
 
         function deleteRule(rule_id){
-            console.log('delete', rule_id)
+            //console.log('delete', rule_id)
             d3.select('#'+rule_id).remove()
             d3.select('#hidden_'+rule_id).remove()
         }
 
         function updateRuleInput(){
             let rule_id = this.id;
-            console.log('ur', rule_id)
+            //console.log('ur', rule_id)
             d3.select('#hidden_'+rule_id).remove();
             d3.select('form').append('input')
                 .attr('type', 'hidden')
@@ -202,13 +218,13 @@
             .append('option').text(function(d){return d})
         d3.select('#length_start').property('value', 21)
         d3.select('#length_end').property('value', 23)
-        console.log(data)
+        //console.log(data)
     </script>
     <script>
         function fixLengthValue(origin){
             let start = document.getElementById('length_start').value
             let end = document.getElementById('length_end').value
-            console.log(start, end)
+            //console.log(start, end)
             if(end < start){
                 if(origin=='start'){
                     document.getElementById('length_end').value = start

@@ -1,25 +1,37 @@
         <div class="row">
-            <div class="col-md-5 datasets border overflow-auto" style="height: 10em;"></div>
-            <div class="col-md-2 text-center">
-                <button type="button" class="btn-sm btn-warning p-1 m-1" onclick="addToGroupA()">>>> Group A</button>
-                <button type="button" class="btn-sm btn-info p-1 m-1" onclick="addToGroupB()">>>> Group B</button>
+            <div class="input-group">
+                <span class="input-group-text">Select Dataset</span>
+                <select name="dataset" id="datasets_select" class="form-control"></select>
+                <span class="input-group-text">Filter by Keyword:</span>
+                <input type="text" class="form-control" id="filter_dataset" onkeyup="filterDataset()">
             </div>
-            <div class="col-md-5">
-                <div>
-                    <span class="h5">Group A</span> <input type="text" style="font-style: italic" id="groupA_label">
-                    <div id="groupA" class="p-1">Not selected</div>
-                </div>
-                <div>
-                    <span class="h5">Group B</span> <input type="text" style="font-style: italic" id="groupB_label">
-                    <div id="groupB" class="p-1">Not selected</div>
+
+            <div class="col-md-12 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text btn btn-primary" onclick="addToGroup('A')">Group A:</span>
+                    <span type="text" class="form-control" id="groupA" onclick="fileRemove('A')"></span>
+                    <span class="input-group-text">Label for A:</span>
+                    <input type="text" style="font-style: italic" id="groupA_label"
                 </div>
             </div>
+            <div class="col-md-12 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text btn btn-secondary" onclick="addToGroup('B')">Group B:</span>
+                    <span type="text" class="form-control" id="groupB" onclick="fileRemove('B')"></span>
+                    <span class="input-group-text">Label for B:</span>
+                    <input type="text" style="font-style: italic" id="groupB_label"
+                </div>
+            </div>
+
+            </div>
+
         </div>
 {% block afterbody %}
     <script>
         let selected = null;
         let groupA = null;
         let groupB = null;
+        let selectedGroups = {'A':null, 'B':null}
         let ruleGroups = [];
 
         function darken(){
@@ -62,6 +74,14 @@
                 populateDatasetList(main_file_list)
             }
         }
+
+        function addToGroup(group){
+            let option_select = d3.select('#datasets_select option:checked').text()
+            d3.select('#group'+group).html(option_select)
+            selectedGroups[group] = option_select
+            filterDataset()
+        }
+
     </script>
     <script>
         let main_file_list = {{ main_file_list | safe}};
@@ -86,7 +106,25 @@
             d3.selectAll('div.selected').style('font-style', 'italic')
         }
 
+        function filterDataset(){
+            //datasets_select
+            let keyword = document.getElementById('filter_dataset').value.trim().toLowerCase()
+            let curr_data = main_file_list.map(file=>file.split('/')[1])
+            curr_data = curr_data.filter(file => file !== selectedGroups['A'] && file !== selectedGroups['B'])
+            if (keyword){
+                d3.select('#datasets_select').selectAll('option').remove()
+                d3.select('#datasets_select').selectAll('option').data(curr_data.filter(file=>file.toLowerCase().includes(keyword))).enter()
+                    .append('option').text(function(d){return d})
+            }else{
+                d3.select('#datasets_select').selectAll('option').data(curr_data).enter()
+                    .append('option').text(function(d){return d})
+            }
+        }
+
+        filterDataset()
         populateDatasetList(main_file_list)
     </script>
+
+
 
 {% endblock %}
