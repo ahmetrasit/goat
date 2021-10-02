@@ -82,13 +82,14 @@ def setops():
     return render_template('setops.html', data=file_list)
 
 
-@app.route("/preview/<groupA>/<groupB>/<operation>")
-def preview(groupA, groupB, operation):
+@app.route("/preview/<groupA>/<groupB>/<groupC>/<operation>")
+def preview(groupA, groupB, groupC, operation):
     id_sets = process_instance.prepIdSets()
-    set_a = process_instance.getGeneListInLocusName(groupA, id_sets)
-    set_b = process_instance.getGeneListInLocusName(groupB, id_sets)
-    output = process_instance.applyOperation(set_a, set_b, operation)
-    return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b)})
+    set_a = process_instance.getGeneListInLocusName(groupA.replace('|', ''), id_sets) if groupA != '|' else []
+    set_b = process_instance.getGeneListInLocusName(groupB.replace('|', ''), id_sets) if groupB != '|' else []
+    set_c = process_instance.getGeneListInLocusName(groupC.replace('|', ''), id_sets) if groupC != '|' else []
+    output = process_instance.applyOperation(set_a, set_b, set_c, operation)
+    return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b), 'list_c':list(set_c)})
 
 
 @app.route("/plot")
@@ -138,6 +139,10 @@ def discover():
     file_list = getFileList(['genelist'])
     genelist2data = prepGeneLists(path.split('/')[-1].replace('.json', '') for path in file_list)
     return render_template('explain.html', data=genelist2data)
+
+@app.route("/venn")
+def venn():
+    return render_template('venn_dev.html')
 
 def prepGeneLists(genelists):
     list2genes = {}

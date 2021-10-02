@@ -1,0 +1,81 @@
+        <div class="row">
+            <div class="input-group">
+                <span class="input-group-text">Select Genelist</span>
+                <select name="dataset" id="genelists_select" class="form-control"></select>
+                <span class="input-group-text">Filter by Keyword:</span>
+                <input type="text" class="form-control" id="filter_genelist" onkeyup="filterGenelist()">
+            </div>
+
+            <div class="col-md-12 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text btn btn-primary" onclick="addToGroup('A')">Group A:</span>
+                    <span type="text" class="form-control" id="groupA" onclick="genelistRemove('A')"></span>
+                    <span class="input-group-text">Label for A:</span>
+                    <input type="text" style="font-style: italic" id="groupA_label">
+                </div>
+            </div>
+            <div class="col-md-12 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text btn btn-warning" onclick="addToGroup('B')">Group B:</span>
+                    <span type="text" class="form-control" id="groupB" onclick="genelistRemove('B')"></span>
+                    <span class="input-group-text">Label for B:</span>
+                    <input type="text" style="font-style: italic" id="groupB_label">
+                </div>
+            </div>
+            <div class="col-md-12 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text btn btn-info" onclick="addToGroup('C')">Group C:</span>
+                    <span type="text" class="form-control" id="groupC" onclick="genelistRemove('C')"></span>
+                    <span class="input-group-text">Label for C:</span>
+                    <input type="text" style="font-style: italic" id="groupC_label">
+                </div>
+            </div>
+
+            </div>
+
+        </div>
+{% block afterbody %}
+    <script>
+        let selected = null;
+        let selectedGroups = {'A':null, 'B':null, 'C':null}
+        console.log(3)
+
+        function addToGroup(group){
+            let option_select = d3.select('#genelists_select option:checked').text()
+            d3.select('#group'+group).html(option_select)
+            selectedGroups[group] = option_select
+            filterGenelist()
+        }
+
+        function genelistRemove(group){
+            d3.select('#group'+group).html('')
+            selectedGroups[group] = null
+            filterGenelist()
+        }
+
+    </script>
+    <script>
+        let main_gene_list = {{ data | safe}};
+
+        function filterGenelist(){
+            //genelists_select
+            let keyword = document.getElementById('filter_genelist').value.trim().toLowerCase()
+            let curr_data = main_gene_list.map(file=>file.split('/')[1].replace('.json', ''))
+            let {A, B, C} = selectedGroups
+            curr_data = curr_data.filter(file => file !== A && file !== B && file !== C)
+            d3.select('#genelists_select').selectAll('option').remove()
+            if (keyword){
+                d3.select('#genelists_select').selectAll('option').data(curr_data.filter(file=>file.toLowerCase().includes(keyword.toLowerCase()))).enter()
+                    .append('option').text(function(d){return d})
+            }else{
+                d3.select('#genelists_select').selectAll('option').data(curr_data).enter()
+                    .append('option').text(function(d){return d})
+            }
+        }
+
+        filterGenelist()
+    </script>
+
+
+
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Venn Diagram{% endblock %}
+
+{% block center %}
+    	Venn Diagram
+    <div id="venn"></div>
+    <script src="{{ url_for('static', filename='venn.min.js') }}"></script>
+
+<script>
+    //let div_width = document.getElementById('venn').clientWidth * .7
+    //let margin = {top: div_width*.15, right: div_width*.15, bottom: div_width*.08, left: div_width*.08},
+    //width = div_width - margin.left - margin.right,
+    //height = div_width/2 - margin.top - margin.bottom;
+
+    console.log('venn.js', 2)
+    var sets = [ {sets: ['A'], size: 5000},
+             {sets: ['B'], size: 4000},
+             {sets: ['A','B'], size: 2500}];
+    d3.select('svg').remove()
+    var chart = venn.VennDiagram()
+    d3.select("#venn").datum(sets).call(chart);
+
+
+
+
+
+</script>
+
+{% endblock %}
+{% block right %}
+{% endblock %}
+
