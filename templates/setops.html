@@ -2,32 +2,51 @@
 {% block title %}Set Operations{% endblock %}
 
 {% block center %}
-    <script src="{{ url_for('static', filename='venn.min.js') }}"></script>
-    <div class="jumbotron mt-3 mb-2">
-      <h1 class="display-4">Set Operations</h1>
-      <p class="lead">Find intersection, union, and difference between two selected gene list.</p>
-    </div>
+<style>
+    .venntooltip {
+      position: absolute;
+      text-align: center;
+      width: 128px;
+      height: 24px;
+      color: white;
+      background:gray;
+      padding: 2px;
+      border: 0px;
+      border-radius: 8px;
+      opacity: 0;
+    }
+</style>
+
     <form action="/" method="post">
+        <div>
+            <div class="jumbotron mt-3 mb-2">
+              <h1 class="display-4">Set Operations</h1>
+              <p class="lead">Find intersection, union, and difference between two selected gene list.</p>
+            </div>
+            {% include "selection_templates/triple_genelist_selection.html" %}
+        </div>
+
         <input type="hidden" name="type" value="setops">
         <input type="hidden" id="input_groupA" name="groupA" value="">
         <input type="hidden" id="input_groupB" name="groupB" value="">
 
-
-
-        {% include "selection_templates/triple_genelist_selection.html" %}
-
         <div class="rules"></div>
-        <div id="venn"></div>
+        <div id="venn_chart"></div>
+        <div class="input-group mt-3">
+            <span class="input-group-text">Give a name to save</span>
+            <input type="text" name="save">
+            <input type="submit" class="form-control btn btn-success">
+        </div>
 
-        <div class="mt-3">Give a name to save<input type="text" name="save"></div>
-        <input type="submit">
     </form>
 
-    <a href="discover">Alternatively, explore origins of a gene list</a>
+    <a class="mt-5 h4" href="discover">Alternatively, explore origins of a gene list</a>
 {% endblock %}
 {% block afterbody %}
+    <script src="{{ url_for('static', filename='venn.js') }}"></script>
+
     <script>
-        console.log('setops', 4)
+        console.log('setops', 16)
 
 
         let ruleGroups = [];
@@ -83,6 +102,35 @@
                     groupB_genes_bottom.append('span').attr('class', 'input-group-text').html('in B-A:')
                     groupB_genes_bottom.append('span').attr('class', 'form-control').attr('id', 'groupBminusA_gene_count')
 
+            let vennInfoUpper = d3.select('#rules_'+group_id).append('div').attr('class', 'row input-group m-1')
+            let vennInfo1 = vennInfoUpper.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo1.append('span').attr('class', 'input-group-text').html('A ∪ B ∪ C:')
+                vennInfo1.append('span').attr('class', 'form-control').attr('id', 'AorBorC')
+            let vennInfo2 = vennInfoUpper.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo2.append('span').attr('class', 'input-group-text').html('A - (B ∪ C):')
+                vennInfo2.append('span').attr('class', 'form-control').attr('id', 'AmBorC')
+            let vennInfo3 = vennInfoUpper.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo3.append('span').attr('class', 'input-group-text').html('B - (A ∪ C):')
+                vennInfo3.append('span').attr('class', 'form-control').attr('id', 'BmAorC')
+            let vennInfo4 = vennInfoUpper.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo4.append('span').attr('class', 'input-group-text').html('C - (A ∪ B):')
+                vennInfo4.append('span').attr('class', 'form-control').attr('id', 'CmAorB')
+
+            let vennInfoLower = d3.select('#rules_'+group_id).append('div').attr('class', 'row input-group m-1')
+            let vennInfo5 = vennInfoLower.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo5.append('span').attr('class', 'input-group-text').html('A ∩ B ∩ C:')
+                vennInfo5.append('span').attr('class', 'form-control').attr('id', 'AaBaC')
+            let vennInfo6 = vennInfoLower.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo6.append('span').attr('class', 'input-group-text').html('(A ∩ B) - C:')
+                vennInfo6.append('span').attr('class', 'form-control').attr('id', 'AaBmC')
+            let vennInfo7 = vennInfoLower.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo7.append('span').attr('class', 'input-group-text').html('(A ∩ C) - B:')
+                vennInfo7.append('span').attr('class', 'form-control').attr('id', 'AaCmB')
+            let vennInfo8 = vennInfoLower.append('div').attr('class', 'col-md-3').append('div').attr('class', 'input-group')
+                vennInfo8.append('span').attr('class', 'input-group-text').html('(B ∩ C) - A:')
+                vennInfo8.append('span').attr('class', 'form-control').attr('id', 'BaCmA')
+
+
             d3.select('form').append('input')
                 .attr('type', 'hidden')
                 .attr('name', 'hidden_operation')
@@ -111,7 +159,6 @@
                     d3.select('#groupBminusA_gene_count').html(data['list_b'].filter(gene=>!data['list_a'].includes(gene)).length)
                     d3.select('#operation_output').html(data['output'].length)
                     let labelConvert = {'list_a':genelistA.replace('|', ''), 'list_b':genelistB.replace('|', ''), 'list_c':genelistC.replace('|', '')}
-                    console.log(data)
                     var sets = []
                     let labels = ['list_a', 'list_b', 'list_c']
                     for(i in labels){
@@ -124,13 +171,62 @@
                             }
                         }
                     }
-                    console.log(sets)
+                    var all_data = [data['list_a'], data['list_b'], data['list_c']];
+                    var common_genes = all_data.reduce((a, b) => a.filter(c => b.includes(c)));
+                    sets.push({sets:[labelConvert['list_a'], labelConvert['list_b'], labelConvert['list_c']], size:common_genes.length})
+
                     //var sets = [ {sets: ['A'], size: data['list_a'].length},
                     //         {sets: ['B'], size: data['list_a'].length},
                     //         {sets: ['A','B'], size: 2500}];
                     d3.select('svg').remove()
+
                     var chart = venn.VennDiagram()
-                    d3.select("#venn").datum(sets).call(chart);
+                        .width(500)
+                        .height(400)
+
+
+
+                    var div = d3.select("#venn_chart").datum(sets).call(chart);
+                        div.selectAll("text").style("fill", "black");
+                        div.selectAll(".venn-circle path")
+                                .style("stroke-width", 3)
+                                .style("stroke-opacity", 0)
+                                .style("stroke", "#fff");
+
+
+
+                    var tooltip = d3.select("#venn_chart").append("div")
+                        .attr("class", "venntooltip");
+
+                    div.selectAll("g")
+                        .on("mouseover", function(m, d) {
+                            // sort all the areas relative to the current item
+                            venn.sortAreas(div, d);
+
+                            // Display a tooltip with the current size
+                            tooltip.style("opacity", 1);
+                            tooltip.text(d.size);
+
+
+                            var selection = d3.select(this);
+                            selection.select("path")
+                                .style("fill-opacity", d.sets.length === 1 ? .5 : .2)
+                                .style("stroke-opacity", 1);
+                        })
+
+                        .on("mousemove", function(m, d) {
+
+                            tooltip.style("left", (m.pageX) + "px")
+                                   .style("top", (m.pageY - 28) + "px");
+                        })
+
+                        .on("mouseout", function(m, d) {
+                            tooltip.style("opacity", 0);
+                            var selection = d3.select(this);
+                            selection.select("path")
+                                .style("fill-opacity", d.sets.length === 1 ? .25 : .0)
+                                .style("stroke-opacity", 0);
+                        });
 
 
                 })
