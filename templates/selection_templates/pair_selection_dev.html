@@ -22,31 +22,24 @@
                     <input type="text" style="font-style: italic" id="groupB_label">
                 </div>
             </div>
-            <div class="col-md-12 mt-2">
-                <div class="input-group">
-                    <span class="input-group-text btn btn-info" onclick="addToGroup('C')">Group C:</span>
-                    <span type="text" class="form-control" id="groupC" onclick="genelistRemove('C')"></span>
-                    <span class="input-group-text">Label for C:</span>
-                    <input type="text" style="font-style: italic" id="groupC_label">
-                </div>
-            </div>
-
-            </div>
 
         </div>
+
 {% block afterbody %}
     <script>
+        console.log('psd', 1)
         let selected = null;
         let selectedGroups = {'A':null, 'B':null, 'C':null}
+        console.log(3)
 
         function addToGroup(group){
-            let option_select = d3.select('#genelists_select option:checked').text();
-            let path = option_select;
-            d3.select('#input_group'+group).attr('value', path);
-            console.log(path, d3.select('#input_group'+group).attr('value'))
+            let option_select = d3.select('#genelists_select option:checked').text()
+            let path = d3.select('#genelists_select option:checked').attr('value')
+            d3.select('#input_group'+group).attr('value', path)
             d3.select('#group'+group).html(option_select)
             selectedGroups[group] = option_select
             filterGenelist()
+
         }
 
         function genelistRemove(group){
@@ -57,22 +50,21 @@
 
     </script>
     <script>
-        console.log ('tgs', 3)
-        let main_gene_list = {{ data | safe}};
+        let main_file_list = {{ main_file_list | safe}};
 
         function filterGenelist(){
             //genelists_select
             let keyword = document.getElementById('filter_genelist').value.trim().toLowerCase()
-            let curr_data = main_gene_list.map(file=>file.split('/')[1].replace('.json', ''))
+            let curr_data = main_file_list.map(file=>[file.split('/')[1].replace('.json', ''), file])
             let {A, B, C} = selectedGroups
-            curr_data = curr_data.filter(file => file !== A && file !== B && file !== C)
+            curr_data = curr_data.filter(file => file[0] !== A && file[0] !== B && file[0] !== C)
             d3.select('#genelists_select').selectAll('option').remove()
             if (keyword){
-                d3.select('#genelists_select').selectAll('option').data(curr_data.filter(file=>file.toLowerCase().includes(keyword.toLowerCase()))).enter()
-                    .append('option').text(function(d){return d})
+                d3.select('#genelists_select').selectAll('option').data(curr_data.filter(file=>file[0].toLowerCase().includes(keyword.toLowerCase()))).enter()
+                    .append('option').text(function(d){return d[0]}).attr('value', function(d){return d[1]})
             }else{
                 d3.select('#genelists_select').selectAll('option').data(curr_data).enter()
-                    .append('option').text(function(d){return d})
+                    .append('option').text(function(d){return d[0]}).attr('value', function(d){return d[1]})
             }
         }
 

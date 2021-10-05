@@ -13,12 +13,15 @@ class Process:
     def setops(self, formdata):
         groupA = formdata['groupA']
         groupB = formdata['groupB']
+        groupC = formdata['groupC']
         operation = formdata['hidden_operation']
         save_filename = escape(formdata['save']).replace('\s', '_')
         id_sets = self.prepIdSets()
         set_a = self.getGeneListInLocusName(groupA, id_sets)
         set_b = self.getGeneListInLocusName(groupB, id_sets)
-        output = self.applyOperation(set_a, set_b, operation)
+        set_c = self.getGeneListInLocusName(groupC, id_sets) if groupC else []
+        print('>>', operation)
+        output = self.applyOperation(set_a, set_b, set_c, operation)
         if output:
             saved_filename = self.saveFile(f'data/genelist/{save_filename}.json', list(output))
             return '', f'Genelist saved as "{saved_filename}", having {len(output)} genes.'

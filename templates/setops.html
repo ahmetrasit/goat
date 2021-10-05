@@ -29,6 +29,7 @@
         <input type="hidden" name="type" value="setops">
         <input type="hidden" id="input_groupA" name="groupA" value="">
         <input type="hidden" id="input_groupB" name="groupB" value="">
+        <input type="hidden" id="input_groupC" name="groupC" value="">
 
         <div class="rules"></div>
         <div id="venn_chart"></div>
@@ -46,7 +47,7 @@
     <script src="{{ url_for('static', filename='venn.js') }}"></script>
 
     <script>
-        console.log('setops', 16)
+        console.log('setops', 17)
 
 
         let ruleGroups = [];
@@ -158,7 +159,39 @@
                     d3.select('#groupAminusB_gene_count').html(data['list_a'].filter(gene=>!data['list_b'].includes(gene)).length)
                     d3.select('#groupBminusA_gene_count').html(data['list_b'].filter(gene=>!data['list_a'].includes(gene)).length)
                     d3.select('#operation_output').html(data['output'].length)
-                    let labelConvert = {'list_a':genelistA.replace('|', ''), 'list_b':genelistB.replace('|', ''), 'list_c':genelistC.replace('|', '')}
+
+
+                    let AorBorC = [...data['list_a'], ...data['list_b'], ...data['list_c']];
+                    let AorB = [...data['list_a'], ...data['list_b']];
+                    let AorC = [...data['list_a'], ...data['list_c']];
+                    let BorC = [...data['list_b'], ...data['list_c']];
+                    let AaB = data['list_a'].filter(gene=>data['list_b'].includes(gene));
+                    let AaC = data['list_a'].filter(gene=>data['list_c'].includes(gene));
+                    let BaC = data['list_b'].filter(gene=>data['list_c'].includes(gene));
+                    let AmBorC = data['list_a'].filter(gene=>!BorC.includes(gene));
+                    let BmAorC = data['list_b'].filter(gene=>!AorC.includes(gene));
+                    let CmAorB = data['list_c'].filter(gene=>!AorB.includes(gene));
+                    let AaBaC = AaB.filter(gene=>BaC.includes(gene));
+                    let AaBmC = AaB.filter(gene=>!data['list_c'].includes(gene));
+                    let AaCmB = AaC.filter(gene=>!data['list_b'].includes(gene));
+                    let BaCmA = BaC.filter(gene=>!data['list_a'].includes(gene));
+                    d3.select('#AorBorC').html(AorBorC.length)
+                    d3.select('#AmBorC').html(AmBorC.length)
+                    d3.select('#BmAorC').html(BmAorC.length)
+                    d3.select('#CmAorB').html(CmAorB.length)
+                    d3.select('#AaBaC').html(AaBaC.length)
+                    d3.select('#AaBmC').html(AaBmC.length)
+                    d3.select('#AaCmB').html(AaCmB.length)
+                    d3.select('#BaCmA').html(BaCmA.length)
+
+
+
+                    //let labelConvert = {'list_a':genelistA.replace('|', ''), 'list_b':genelistB.replace('|', ''), 'list_c':genelistC.replace('|', '')}
+                    let labelConvert = {}
+                    labelConvert['list_a'] = document.getElementById('groupA_label').value.trim() || genelistA.replace('|', '');
+                    labelConvert['list_b'] = document.getElementById('groupB_label').value.trim() || genelistB.replace('|', '');
+                    labelConvert['list_c'] = document.getElementById('groupC_label').value.trim() || genelistC.replace('|', '');
+
                     var sets = []
                     let labels = ['list_a', 'list_b', 'list_c']
                     for(i in labels){

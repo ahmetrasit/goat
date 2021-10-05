@@ -73,7 +73,7 @@ def bin():
 @app.route("/compare")
 def compare():
     file_list = getFileList(['binned'])
-    return render_template('compare.html', data=file_list)
+    return render_template('compare.html', main_file_list=file_list)
 
 
 @app.route("/setops")
