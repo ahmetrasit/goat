@@ -336,14 +336,15 @@ class Process:
 
 
     def getIdType(self, id_sets, gene_set):
-        max = 0
+        curr_max = 0
         found_type = ''
         for curr_type in id_sets:
             common = len(id_sets[curr_type] & set(gene_set))
-            if common > max:
-                max = common
+            if common > curr_max:
+                curr_max = common
                 found_type = curr_type
-        return found_type.split('2')[0], 100*max//len(gene_set)
+        print('>>>', found_type.split('2')[0], curr_max, gene_set)
+        return found_type.split('2')[0], 100*curr_max//len(gene_set)
 
 
     def filterByGeneTypes(self, gene_set, id_type, selected_gene_types):

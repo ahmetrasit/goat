@@ -4,77 +4,50 @@
 </div>
 <script>
     let curr_selected = null
-    function geneListOnClick(d,selected_gene_list){
-        //$('#processingModal').modal('show')
-        let is_checked = d3.select('#'+selected_gene_list).property('checked')
-        console.log(is_checked, selected_gene_list)
-        if(is_checked){
-            if (curr_selected){
-                genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
-                    .style('fill', 'lightblue')
-                    .style('opacity', 0.5)
-                    .style('r', 2.5)
-                );
-            }
-            d3.selectAll('.gene_lists').property('checked', false)
-            d3.select('#'+selected_gene_list).property('checked', true)
-            curr_selected = selected_gene_list
-            let selected = selected_gene_list.toLowerCase()
+    function geneListOnClick(){
+        let fileA = d3.select('#groupA').html()
+        let fileB = d3.select('#groupB').html()
 
-            console.log(selected)
-            if(selected in genelist_cache){
-                console.log(genelist_cache[selected].length);
-                genelist_cache[selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
-                    .style('r', 3.5)
-                    .style('fill', 'tomato')
-                    .style('opacity', 0.7)
+        let curr_selected = d3.select('.gene_file_list').select('select option:checked').text().toLowerCase()
+        let color = d3.select('.color_list').select('select option:checked').text().toLowerCase()
+        console.log(curr_selected)
 
-                );
-                $('#processingModal').modal('hide')
-            }else{
-                d3.json('/getgenelist/'+selected).then(function(data){
-                    console.log(data.length);
-                    genelist_cache[selected] = data;
-                    data.forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
-                        .style('fill', 'tomato')
-                        .style('r', 3.5)
-                        .style('opacity', 0.7)
-                    );
-                    $('#processingModal').modal('hide')
-                })
-            }
+
+        if(curr_selected in genelist_cache){
+            console.log(genelist_cache[curr_selected].length);
+            let filtered = data_cache[fileA+'|'+fileB].filter(datum => genelist_cache[curr_selected].includes(datum.gene))
+            highlightCircles(filtered, curr_selected, color)
         }else{
-            genelist_cache[curr_selected].forEach(gene => d3.select('#g_'+gene.replace('.', '_'))
-                .style('fill', 'lightblue')
-                .style('opacity', 0.5)
-                .style('r', 2.5)
-            );
-            curr_selected = null;
-            $('#processingModal').modal('hide')
+            d3.json('/getgenelist/'+curr_selected).then(function(data){
+                console.log(data.length);
+                genelist_cache[curr_selected] = data;
+                let filtered = data_cache[fileA+'|'+fileB].filter(datum => genelist_cache[curr_selected].includes(datum.gene))
+                highlightCircles(filtered, curr_selected, color)
+            })
         }
-        $('#processingModal').modal('hide')
+
     }
 
     let curr_selected_type = null
     function geneTypeOnClick(d,selected_gene_type){
         console.log(d,selected_gene_type)
-        let fileA = d3.select('#'+groupA).html()
-        let fileB = d3.select('#'+groupB).html()
+        let fileA = d3.select('#groupA').html()
+        let fileB = d3.select('#groupB').html()
         let is_checked = d3.select('#'+selected_gene_type).property('checked')
         console.log(is_checked, selected_gene_type)
         if(is_checked){
             d3.selectAll('.gene_types').property('checked', false)
             d3.select('#'+selected_gene_type).property('checked', true)
             curr_selected_type = selected_gene_type
-            plotScatter(data_cache[fileA+'|'+fileB].filter(d => d.type===selected_gene_type))
+            plotScatter(data_cache[fileA+'|'+fileB].filter(d => d.type===selected_gene_type), 'genes')
         }else{
             curr_selected_type = null;
-            plotScatter(data_cache[fileA+'|'+fileB]);
+            plotScatter(data_cache[fileA+'|'+fileB], 'genes');
             $('#processingModal').modal('hide')
         }
     }
 </script>
-{% include "selection_templates/pair_selection.html" %}
+{% include "selection_templates/pair_selection_dev.html" %}
 
 <div class="input-group mt-3">
     <div>
@@ -103,10 +76,11 @@
 </div>
 <script>
     //Cache
-    var data_cache = {}
-    var genelist_cache = {}
-    var gene2type = {}
-    var type2genes = {}
+    var data_cache = {};
+    var genelist_cache = {};
+    var gene2type = {};
+    var type2genes = {};
+    var svg = null;
 </script>
 <script>
     var div_width = document.getElementById('svg').clientWidth * .7
@@ -146,11 +120,11 @@
     }
 
     function plotScatterMain(){
-        if(groupA && groupB){
+        if(selectedGroups['A'] && selectedGroups['B']){
             $('#processingModal').modal('show')
             sleep(500)
-            let fileA = d3.select('#'+groupA).html()
-            let fileB = d3.select('#'+groupB).html()
+            let fileA = d3.select('#groupA').html()
+            let fileB = d3.select('#groupB').html()
             let scale = d3.select('#scale_selection').property('value')
 
             if(scale==='log'){
@@ -162,15 +136,23 @@
                 y = d3.scaleLinear().range([height, 0.1]);
             }
 
+            d3.select('.svg').selectAll('svg').remove()
+            svg = d3.select(".svg").append("svg")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .style('background', 'ivory')
+                    .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
             console.log(fileA, fileB);
             if (fileA+'|'+fileB in data_cache){
-                plotScatter(data_cache[fileA+'|'+fileB]);
+                plotScatter(data_cache[fileA+'|'+fileB], 'genes');
                 d3.select('#genelist_selection_div').style('display', 'block')
                 $('#processingModal').modal('hide')
             }else{
-                data = d3.json('/getDataPair/'+fileA+'/'+fileB+'/data_binned').then(function(data){
+                data = d3.json('/getDataPair/'+fileA+'.json/'+fileB+'.json/data_binned').then(function(data){
                         data_cache[fileA+'|'+fileB] = data;
-                        plotScatter(data);
+                        plotScatter(data, 'genes');
                         d3.select('#genelist_selection_div').style('display', 'block')
                         prepGeneTypeFilter(data)
                         $('#processingModal').modal('hide')
@@ -183,48 +165,81 @@
         $('#processingModal').modal('hide')
     }
 
-    function plotScatter(data){
-        d3.selectAll('.gene_lists').property('checked', false)
-        d3.selectAll('.gene_types').property('checked', false)
 
-        d3.select('.svg').selectAll('svg').remove()
+    function groupData(data){
+        let grouped = {};
+        let gene2coor = {};
+        let type2gene = {};
+        console.log(data.length);
+        for(let datum of data){
+            if(datum.type in type2gene){
+                type2gene[datum.type].push(datum.gene)
+            }else{
+                type2gene[datum.type] = [datum.gene]
+            }
+            const x_val = datum.x.toFixed(1) //(Math.round(datum.x) === 0) ? 0.25 : Math.round(datum.x);
+            const y_val = datum.y.toFixed(1) //(Math.round(datum.y) === 0) ? 0.25 : Math.round(datum.y);
+            const coor_id =  x_val + '|' + y_val;
+            gene2coor[datum.gene] = coor_id;
+            if(coor_id in grouped){
+                if(datum.type in grouped[coor_id]){
+                    grouped[coor_id][datum.type].push(datum.gene);
+                }else{
+                    grouped[coor_id][datum.type] = [datum.gene];
+                }
+            }else{
+                grouped[coor_id] = {};
+                grouped[coor_id][datum.type] = [datum.gene];
+            }
+        }
+        console.log(Object.keys(grouped).length)
 
+        return [grouped, gene2coor, type2gene]
+    }
 
-        var svg = d3.select(".svg").append("svg")
-                    .attr("width", width + margin.left + margin.right)
-                    .attr("height", height + margin.top + margin.bottom)
-                    .style('background', 'ivory')
-                .append("g")
-                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    function highlightCircles(data, classname, color){
+        let [grouped_data, gene2coor, type2gene] = groupData(data)
+        let ids = Object.keys(grouped_data).map(coor => '#coor_'+coor.replace('|', '_').replaceAll('.', '-'))
+        ids.forEach(curr_id => d3.select(curr_id).style('fill') === 'transparent' ? d3.select(curr_id).style('fill', color) : d3.select(curr_id).style('fill', 'red'))
+        ids.forEach(curr_id => d3.select(curr_id).raise())
 
+    }
 
-
+    ///////////
+    console.log('bs', 1454)
+    function plotScatter(data, classname){
         let x_max = d3.max(data, function(d) { return d.x; })
         let y_max = d3.max(data, function(d) { return d.y; })
         let global_max = d3.max([x_max, y_max]) * 1.05
         x.domain([0.1, global_max]);
         y.domain([0.1, global_max]);
+        let scale = d3.select('#scale_selection').property('value')
+        if(scale !== 'log'){
+            x.domain([0.1, 1000]);
+            y.domain([0.1, 1000]);
+        }
+
         var valueline = d3.line()
             .x(function(d) { return x(d.x); })
             .y(function(d) { return y(d.y); });
 
-        svg.selectAll("dot").data(data)
-            .enter().append("circle").on('mouseover', showGene)
-                .attr('class', 'genes').attr('id', function(d){return 'g_'+d.gene.replace('.', '_')})
-                .style('stroke', 'navy')
-                .style('fill', 'lightblue')
-                .style('opacity', .5)
-                .attr("r", 2.5)
-                .attr("cx", function(d) { return x(d.x); })
-                .attr("cy", function(d) { return y(d.y); });
+        let [grouped_data, gene2coor, type2gene] = groupData(data)
 
-        let middle_line_data = [{x:0.1, y:0.1},{x:global_max, y:global_max}]
-        let upper_line_data = [{x:.1, y:.2},{x:global_max/2, y:global_max}]
-        let lower_line_data = [{x:.2, y:.1},{x:global_max, y:global_max/2}]
-        svg.append("path")
-          .data([middle_line_data])
-          .attr("class", "mid_line")
-          .attr("d", valueline);
+        svg.selectAll("circle."+classname).data(Object.keys(grouped_data))
+            .enter().append("circle").on('mouseover', showGene)
+                .attr('class', classname).attr('id', function(d){return 'coor_'+d.replace('|', '_').replaceAll('.', '-')})
+                .style('stroke', 'gray')
+                .style('fill', 'transparent')
+                .style('stroke-opacity', 1)
+                .attr("r", 2.5)
+                .attr("cx", function(d) {
+                     return x(d.split('|')[0]); })
+                .attr("cy", function(d) { return y(d.split('|')[1]); });
+
+        let middle_line_data = [{x:0.25, y:0.25},{x:global_max, y:global_max}]
+        let upper_line_data = [{x:.25, y:.5},{x:global_max/2, y:global_max}]
+        let lower_line_data = [{x:.5, y:.25},{x:global_max, y:global_max/2}]
+
         svg.append("path")
           .data([upper_line_data])
           .attr("class", "upper_line")
@@ -261,12 +276,12 @@
 
         var groupA_label = document.getElementById('groupA_label').value
         if (groupA_label.length < 1){
-            groupA_label = d3.select('#'+groupA).html().split('_')[0]
+            groupA_label = d3.select('#groupA').html().split('_')[0]
         }
 
         var groupB_label = document.getElementById('groupB_label').value
         if (groupB_label.length < 1){
-            groupB_label = d3.select('#'+groupB).html().split('_')[0]
+            groupB_label = d3.select('#groupB').html().split('_')[0]
         }
 
 

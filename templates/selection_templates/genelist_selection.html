@@ -2,6 +2,7 @@
     <span class="h5">Highlight Gene Lists</span>
     <div class="input-group">
         <div class="gene_file_list col"></div>
+        <div class="color_list col"></div>
         <span class="btn btn-primary form-control mb-5" onclick="geneListOnClick()">Filter Gene List</span>
         <span class="btn btn-warning form-control mb-5 " onclick="geneListRemove()">Remove Filter</span>
     </div>
@@ -23,6 +24,7 @@
     }
 
     populateGeneFileSelect('gene_file_list', gene_file_list.map(x=>x.split('/')[1].replace('.json', '')))
+    populateGeneFileSelect('color_list', ['blue', 'green'])
 
 
 </script>
