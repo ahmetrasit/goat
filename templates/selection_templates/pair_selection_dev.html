@@ -1,25 +1,60 @@
         <div class="row">
             <div class="input-group">
-                <span class="input-group-text">Select Genelist</span>
-                <select name="dataset" id="genelists_select" class="form-control"></select>
+                <span class="input-group-text">Select File</span>
+                <select name="dataset" id="filelists_select" class="form-control"></select>
                 <span class="input-group-text">Filter by Keyword:</span>
-                <input type="text" class="form-control" id="filter_genelist" onkeyup="filterGenelist()">
+                <input type="text" class="form-control" id="filter_filelist" onkeyup="filterFileList()">
             </div>
 
-            <div class="col-md-12 mt-2">
+            <div class="col-md-8 mt-2">
                 <div class="input-group">
-                    <span class="input-group-text btn btn-primary" onclick="addToGroup('A')">Group A:</span>
-                    <span type="text" class="form-control" id="groupA" onclick="genelistRemove('A')"></span>
-                    <span class="input-group-text">Label for A:</span>
-                    <input type="text" style="font-style: italic" id="groupA_label">
+                    <span class="input-group-text btn" style="background-color:#2E86C1; color:white" onclick="addToGroup('A')">Group A:</span>
+                    <span type="text" class="form-control group_filename" id="groupA" onclick="filelistRemove('A')"></span>
                 </div>
             </div>
-            <div class="col-md-12 mt-2">
+            <div class="col-md-4 mt-2">
                 <div class="input-group">
-                    <span class="input-group-text btn btn-warning" onclick="addToGroup('B')">Group B:</span>
-                    <span type="text" class="form-control" id="groupB" onclick="genelistRemove('B')"></span>
-                    <span class="input-group-text">Label for B:</span>
-                    <input type="text" style="font-style: italic" id="groupB_label">
+                    <span class="input-group-text" style="background-color:#2E86C1; color:white">Label for A:</span>
+                    <input type="text" style="font-style: italic" class="form-control group_labels" id="groupA_label">
+                </div>
+            </div>
+
+            <div class="col-md-8 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text btn" style="background-color:#E67E22; color:white" onclick="addToGroup('B')">Group B:</span>
+                    <span type="text" class="form-control group_filename" id="groupB" onclick="filelistRemove('B')"></span>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="input-group">
+                    <span class="input-group-text" style="background-color:#E67E22; color:white">Label for B:</span>
+                    <input type="text" style="font-style: italic" class="form-control group_labels" id="groupB_label">
+                </div>
+            </div>
+
+            <div class="col-md-8 mt-2 groupC_div" style="display:none;">
+                <div class="input-group">
+                    <span class="input-group-text btn" style="background-color:#52BE80; color:white" onclick="addToGroup('C')">Group C:</span>
+                    <span type="text" class="form-control group_filename" id="groupC" onclick="filelistRemove('C')"></span>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2 groupC_div" style="display:none;">
+                <div class="input-group">
+                    <span class="input-group-text" style="background-color:#52BE80; color:white">Label for C:</span>
+                    <input type="text" style="font-style: italic" class="form-control group_labels" id="groupC_label">
+                </div>
+            </div>
+
+            <div class="col-md-8 mt-2 groupD_div" style="display:none;">
+                <div class="input-group">
+                    <span class="input-group-text btn" style="background-color:#AF7AC5; color:white" onclick="addToGroup('D')">Group D:</span>
+                    <span type="text" class="form-control group_filename" id="groupD" onclick="filelistRemove('D')"></span>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2 groupD_div" style="display:none;">
+                <div class="input-group">
+                    <span class="input-group-text" style="background-color:#AF7AC5; color:white">Label for D:</span>
+                    <input type="text" style="font-style: italic" class="form-control group_labels" id="groupD_label">
                 </div>
             </div>
 
@@ -29,46 +64,46 @@
     <script>
         console.log('psd', 1)
         let selected = null;
-        let selectedGroups = {'A':null, 'B':null, 'C':null}
-        console.log(3)
+        let selectedGroups = {'A':null, 'B':null, 'C':null, 'D':null}
+        console.log(4)
 
         function addToGroup(group){
-            let option_select = d3.select('#genelists_select option:checked').text()
-            let path = d3.select('#genelists_select option:checked').attr('value')
+            let option_select = d3.select('#filelists_select option:checked').text()
+            let path = d3.select('#filelists_select option:checked').attr('value')
             d3.select('#input_group'+group).attr('value', path)
             d3.select('#group'+group).html(option_select)
             selectedGroups[group] = option_select
-            filterGenelist()
+            filterFileList()
 
         }
 
-        function genelistRemove(group){
+        function filelistRemove(group){
             d3.select('#group'+group).html('')
             selectedGroups[group] = null
-            filterGenelist()
+            filterFileList()
         }
 
     </script>
     <script>
         let main_file_list = {{ main_file_list | safe}};
 
-        function filterGenelist(){
-            //genelists_select
-            let keyword = document.getElementById('filter_genelist').value.trim().toLowerCase()
+        function filterFileList(){
+            //filelists_select
+            let keyword = document.getElementById('filter_filelist').value.trim().toLowerCase()
             let curr_data = main_file_list.map(file=>[file.split('/')[1].replace('.json', ''), file])
-            let {A, B, C} = selectedGroups
-            curr_data = curr_data.filter(file => file[0] !== A && file[0] !== B && file[0] !== C)
-            d3.select('#genelists_select').selectAll('option').remove()
+            let {A, B, C, D} = selectedGroups
+            curr_data = curr_data.filter(file => file[0] !== A && file[0] !== B && file[0] !== C && file[0] !== D)
+            d3.select('#filelists_select').selectAll('option').remove()
             if (keyword){
-                d3.select('#genelists_select').selectAll('option').data(curr_data.filter(file=>file[0].toLowerCase().includes(keyword.toLowerCase()))).enter()
+                d3.select('#filelists_select').selectAll('option').data(curr_data.filter(file=>file[0].toLowerCase().includes(keyword.toLowerCase()))).enter()
                     .append('option').text(function(d){return d[0]}).attr('value', function(d){return d[1]})
             }else{
-                d3.select('#genelists_select').selectAll('option').data(curr_data).enter()
+                d3.select('#filelists_select').selectAll('option').data(curr_data).enter()
                     .append('option').text(function(d){return d[0]}).attr('value', function(d){return d[1]})
             }
         }
 
-        filterGenelist()
+        filterFileList()
     </script>
 
 

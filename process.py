@@ -252,11 +252,17 @@ class Process:
 
 
     def compareDataset(self, formdata):
-        def applyRule(dataA, dataB, element, rule):
-            def getDatumFromRule(rule_first, currA, currB):
-                datum = {'A': currA, 'B': currB, 'A/B': currA / currB if currB > 0 else 0,
-                         'B/A': currB / currA if currA > 0 else 0}
-                return datum[rule_first]
+        def applyRule(json_data, element, rule):
+            #def getDatumFromRule(rule_first, currA, currB):
+            def getDatumFromRule(rule_def, element_values):
+                if '/' in rule_def:
+                    file_group_first, file_group_second = rule_def.split('/')
+                    return element_values[file_group_first] / element_values[file_group_second] if element_values[file_group_second] > 0 else 0
+                else:
+                    return element_values[rule_def]
+                # datum = {'A': currA, 'B': currB, 'A/B': currA / currB if currB > 0 else 0,
+                #         'B/A': currB / currA if currA > 0 else 0}
+                # return datum[rule_def]
 
             def returnRule(datum, rule):
                 ref_value = float(rule[2])
@@ -268,16 +274,22 @@ class Process:
                             }
                 return operator[rule[1]]
 
-            currA = float(dataA[element]) if element in dataA else 0
-            currB = float(dataB[element]) if element in dataB else 0
-            datum = getDatumFromRule(rule[0], currA, currB)
+            element_values = {file_group : float(json_data[file_group][element]) if element in json_data[file_group] else 0 for file_group in json_data}
+            # currA = float(dataA[element]) if element in dataA else 0
+            # currB = float(dataB[element]) if element in dataB else 0
+            # datum = getDatumFromRule(rule[0], currA, currB)
+            datum = getDatumFromRule(rule[0], element_values)
             return returnRule(datum, rule)
 
-        def getResult(dataA, dataB, rules):
+        # def getResult(dataA, dataB, rules):
+        def getResult(json_data, rules):
             output = set([])
-            elements = set(dataA.keys()) | set(dataB.keys())
+            elements = set().union(*[json_data[file_group] for file_group in json_data])
+            print('>>len elements union', len(elements))
+            #elements = set(dataA.keys()) | set(dataB.keys())
             for element in elements:
-                if all([applyRule(dataA, dataB, element, rule) for rule in rules]):
+                #if all([applyRule(dataA, dataB, element, rule) for rule in rules]):
+                if all([applyRule(json_data, element, rule) for rule in rules]):
                     output.add(element)
             return output
 
@@ -291,14 +303,23 @@ class Process:
                 except:
                     rules[group_id] = [rule]
 
-        with open(f'data/{formdata["groupA"]}') as f:
-            dataA = json.load(f)
-        with open(f'data/{formdata["groupB"]}') as f:
-            dataB = json.load(f)
+        json_data = {}
+        for file_group in [key for key in formdata.keys() if key.startswith('group') and len(key) == 6]:
+            print(file_group)
+            if formdata[file_group]:
+                print(file_group)
+                with open(f'data/{formdata[file_group]}') as f:
+                    json_data[file_group[-1]] = json.load(f)
+
+        # with open(f'data/{formdata["groupA"]}') as f:
+        #    dataA = json.load(f)
+        # with open(f'data/{formdata["groupB"]}') as f:
+        #    dataB = json.load(f)
 
         output = set([])
-        for group in rules:
-            output |= getResult(dataA, dataB, rules[group])
+        for rule_group in rules:
+            output |= getResult(json_data, rules[rule_group])
+            # output |= getResult(dataA, dataB, rules[rule_group])
 
         save_filename = escape(formdata['save']).replace('\s', '_')
         saved_filename = ''
@@ -332,7 +353,6 @@ class Process:
                 id_sets[curr] = set(curr_data.keys())
                 converters[curr] = curr_data
         return id_sets, converters
-
 
 
     def getIdType(self, id_sets, gene_set):

@@ -197,13 +197,14 @@
         return [grouped, gene2coor, type2gene]
     }
 
+    
     function highlightCircles(data, classname, color){
         let [grouped_data, gene2coor, type2gene] = groupData(data)
         let ids = Object.keys(grouped_data).map(coor => '#coor_'+coor.replace('|', '_').replaceAll('.', '-'))
         ids.forEach(curr_id => d3.select(curr_id).style('fill') === 'transparent' ? d3.select(curr_id).style('fill', color) : d3.select(curr_id).style('fill', 'red'))
         ids.forEach(curr_id => d3.select(curr_id).raise())
-
     }
+
 
     ///////////
     console.log('bs', 1454)

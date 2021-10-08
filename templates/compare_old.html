@@ -10,13 +10,11 @@
         <input type="hidden" name="type" value="compare">
         <input type="hidden" id="input_groupA" name="groupA" value="">
         <input type="hidden" id="input_groupB" name="groupB" value="">
-        <input type="hidden" id="input_groupC" name="groupC" value="">
-        <input type="hidden" id="input_groupD" name="groupD" value="">
 
         {% include "selection_templates/pair_selection_dev.html" %}
 
 
-        <button type="button" class="btn-sm btn-success p-1 mt-4" onclick="addRuleGroup()">Add Rule Group</button>
+        <button type="button" class="btn-sm btn-success p-1 m-1" onclick="addRuleGroup()">Add Rule Group</button>
         <div class="rules"></div>
         <div class="mt-3">Give a name to save<input type="text" name="save"></div>
         <input type="submit">
@@ -24,22 +22,15 @@
 {% endblock %}
 {% block afterbody %}
     <script>
-        console.log('compare', 21)
-        d3.selectAll('.groupC_div').style('display', 'block')
-        d3.selectAll('.groupD_div').style('display', 'block')
-        $('.group_labels').keyup(updateRuleGroupOptions);
-        $('.group_filename').on('DOMSubtreeModified', updateRuleGroupOptions);
-
-        const group_names = ['A', 'B', 'C', 'D']
+        console.log('compare', 2)
         let ruleGroups = [];
-
 
         function addRuleGroup(){
             ruleGroups.push(0)
             let latestGroupId = ruleGroups.length-1
             let newGroup = d3.select('.rules').append('div')
                 .attr('id', 'ruleGroup_' + latestGroupId)
-                .attr('class', 'border pt-2 pb-2 m-3')
+                .attr('class', 'border pt-2 pb-2')
             newGroup.append('div')
                 .html('<button type="button" class="btn-sm btn-info p-1 m-1" onclick="addRule('+latestGroupId+')">Add a Rule</button>')
             newGroup.append('div')
@@ -54,14 +45,10 @@
 
             let newRule = d3.select('#rules_'+group_id).append('div').attr('class', 'row input-group m-1')
                 .attr('id', curr_rule_identifier)
-
-            let groups = group_names;
-
             //Adding rule structure
             newRule.append('div').attr('id', 'data_select').attr('class', 'col-md-2').on('change', updateRuleInput)
-                .append('select').attr('class', 'form-control data_select').selectAll('option').data(groups).enter()
+                .append('select').attr('class', 'form-control').selectAll('option').data(['A', 'B', 'A/B', 'B/A']).enter()
                     .append('option').text(function(d,i){return d}).attr('value', function(d,i){return d})
-
             newRule.append('div').attr('id', 'operator_select').attr('class', 'col-md-1').on('change', updateRuleInput)
                 .append('select').attr('class', 'form-control').selectAll('option').data(['<', '≤', '≥', '>', '=']).enter()
                     .append('option').text(function(d,i){return d}).attr('value', function(d,i){return d})
@@ -77,49 +64,11 @@
                 .attr('name', 'hidden_'+curr_rule_identifier)
                 .attr('id', 'hidden_'+curr_rule_identifier)
                 .attr('value', getRuleFromId(curr_rule_identifier))
-
-
-            updateRuleGroupOptions()
-        }
-
-        function updateRuleGroupOptions(){
-            console.log('urgo')
-            //groupD_label
-            let convertName = {}
-            let selected_group_names = group_names.filter(name => d3.select('#group'+name).text())
-            console.log(selected_group_names)
-            selected_group_names.map(name => convertName[name]= document.getElementById('group'+name+'_label').value.trim() ? document.getElementById('group'+name+'_label').value.trim() : name);
-            let groups = [];
-            let group2value = {};
-            for(let i=0; i<selected_group_names.length; i++){
-                groups.push(convertName[selected_group_names[i]])
-                group2value[convertName[selected_group_names[i]]] = selected_group_names[i];
-                for(let j=i+1; j<selected_group_names.length; j++){
-                    groups.push(convertName[selected_group_names[i]] + ' / ' + convertName[selected_group_names[j]])
-                    groups.push(convertName[selected_group_names[j]] + ' / ' + convertName[selected_group_names[i]])
-                    group2value[convertName[selected_group_names[i]] + ' / ' + convertName[selected_group_names[j]]] = selected_group_names[i] + '/' + selected_group_names[j]
-                    group2value[convertName[selected_group_names[j]] + ' / ' + convertName[selected_group_names[i]]] = selected_group_names[j] + '/' + selected_group_names[i]
-                }
-                groups.push('---');
-                group2value['---'] = '';
-            }
-            groups.pop()
-
-            d3.selectAll('select.data_select').selectAll('option').remove()
-            d3.selectAll('select.data_select').selectAll('option').data(groups).enter()
-                .append('option')
-                    .text(function(d,i){return d})
-                    .attr('value', function(d,i){return group2value[d]})
-                    .each(function(d) {
-                        if (d === "---") {
-                          d3.select(this).property("disabled", true)
-                        }
-                      });
         }
 
 
         function getRuleFromId(id){
-            let data_select = d3.select('#'+id).select('#data_select option:checked').property('value')
+            let data_select = d3.select('#'+id).select('#data_select option:checked').text()
             let operator_select = d3.select('#'+id).select('#operator_select option:checked').text()
             let data_input = d3.select('#'+id).select('#data_input').property('value')
             return [data_select, operator_select, data_input].join(';')
