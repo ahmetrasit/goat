@@ -435,7 +435,7 @@ class Process:
             print(f'>>>>>>>Error with genelist {selected_gene_set_name}:{e}')
             return set([])
 
-    def applyOperation(self, set_a, set_b, set_c, operation):
+    def applyOperation(self, set_a, set_b, set_c, set_d, operation):
         operations = {'and': set_a & set_b, 'or': set_a | set_b, 'a-b': set_a - set_b, 'b-a': set_b - set_a}
         return operations[operation]
 

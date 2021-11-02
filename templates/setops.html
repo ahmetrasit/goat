@@ -30,6 +30,7 @@
         <input type="hidden" id="input_groupA" name="groupA" value="">
         <input type="hidden" id="input_groupB" name="groupB" value="">
         <input type="hidden" id="input_groupC" name="groupC" value="">
+        <input type="hidden" id="input_groupD" name="groupD" value="">
 
         <div class="rules"></div>
         <div id="venn_chart"></div>
@@ -150,9 +151,10 @@
                 let genelistA = d3.select('#groupA').html()+'|'
                 let genelistB = d3.select('#groupB').html()+'|'
                 let genelistC = d3.select('#groupC').html()+'|'
+                let genelistD = d3.select('#groupD').html()+'|'
 
                 let operation = getOperationFromId()
-                d3.json('/preview/'+genelistA+'/'+genelistB+'/'+genelistC+'/'+operation).then(function(data){
+                d3.json('/preview/'+genelistA+'/'+genelistB+'/'+genelistC+'/'+genelistD+'/'+operation).then(function(data){
                     //alert([data['output'].length, data['list_a'].length, data['list_b'].length])
                     d3.select('#groupA_gene_count').html(data['list_a'].length)
                     d3.select('#groupB_gene_count').html(data['list_b'].length)
@@ -161,20 +163,51 @@
                     d3.select('#operation_output').html(data['output'].length)
 
 
-                    let AorBorC = [...data['list_a'], ...data['list_b'], ...data['list_c']];
+                    let AorBorCorD = [...data['list_a'], ...data['list_b'], ...data['list_c'], ...data['list_d']];
                     let AorB = [...data['list_a'], ...data['list_b']];
                     let AorC = [...data['list_a'], ...data['list_c']];
                     let BorC = [...data['list_b'], ...data['list_c']];
+                    let AorD = [...data['list_a'], ...data['list_d']];
+                    let BorD = [...data['list_b'], ...data['list_d']];
+                    let CorD = [...data['list_c'], ...data['list_d']];
+                    let AorBorC = [...data['list_a'], ...data['list_b'], ...data['list_c']];
+                    let AorBorD = [...data['list_a'], ...data['list_b'], ...data['list_d']];
+                    let AorCorD = [...data['list_a'], ...data['list_c'], ...data['list_d']];
+                    let BorCorD = [...data['list_b'], ...data['list_c'], ...data['list_d']];
                     let AaB = data['list_a'].filter(gene=>data['list_b'].includes(gene));
                     let AaC = data['list_a'].filter(gene=>data['list_c'].includes(gene));
                     let BaC = data['list_b'].filter(gene=>data['list_c'].includes(gene));
-                    let AmBorC = data['list_a'].filter(gene=>!BorC.includes(gene));
-                    let BmAorC = data['list_b'].filter(gene=>!AorC.includes(gene));
-                    let CmAorB = data['list_c'].filter(gene=>!AorB.includes(gene));
-                    let AaBaC = AaB.filter(gene=>BaC.includes(gene));
-                    let AaBmC = AaB.filter(gene=>!data['list_c'].includes(gene));
+                    let AaD = data['list_a'].filter(gene=>data['list_d'].includes(gene));
+                    let BaD = data['list_b'].filter(gene=>data['list_d'].includes(gene));
+                    let CaD = data['list_c'].filter(gene=>data['list_d'].includes(gene));
                     let AaCmB = AaC.filter(gene=>!data['list_b'].includes(gene));
                     let BaCmA = BaC.filter(gene=>!data['list_a'].includes(gene));
+
+                    let AmBorCorD = data['list_a'].filter(gene=>!BorCorD.includes(gene));
+                    let BmAorCorD = data['list_b'].filter(gene=>!AorCorD.includes(gene));
+                    let CmAorBorD = data['list_c'].filter(gene=>!AorBorD.includes(gene));
+                    let DmAorBorC = data['list_d'].filter(gene=>!AorBorC.includes(gene));
+
+                    let AaBaC = AaB.filter(gene=>BaC.includes(gene));
+                    let AaBaD = AaB.filter(gene=>BaD.includes(gene));
+                    let AaCaD = AaC.filter(gene=>CaD.includes(gene));
+                    let BaCaD = BaC.filter(gene=>CaD.includes(gene));
+
+                    let AaBmCorD = AaB.filter(gene=>!CorD.includes(gene));
+                    let AaCmBorD = AaC.filter(gene=>!BorD.includes(gene));
+                    let AaDmBorC = AaD.filter(gene=>!BorC.includes(gene));
+                    let BaCmAorD = BaC.filter(gene=>!AorD.includes(gene));
+                    let BaDmAorC = BaD.filter(gene=>!AorC.includes(gene));
+                    let CaDmAorB = CaD.filter(gene=>!AorB.includes(gene));
+
+                    let AaBaCmD = AaBaC.filter(gene=>!data['list_d'].includes(gene));
+                    let AaBaDmC = AaC.filter(gene=>!data['list_c'].includes(gene));
+                    let AaCaDmB = AaD.filter(gene=>!data['list_b'].includes(gene));
+                    let BaCaDmA = BaC.filter(gene=>!data['list_a'].includes(gene));
+
+                    let AaBaCaD = AaB.filter(gene=>CaD.includes(gene));
+
+
                     d3.select('#AorBorC').html(AorBorC.length)
                     d3.select('#AmBorC').html(AmBorC.length)
                     d3.select('#BmAorC').html(BmAorC.length)
@@ -191,9 +224,10 @@
                     labelConvert['list_a'] = document.getElementById('groupA_label').value.trim() || genelistA.replace('|', '');
                     labelConvert['list_b'] = document.getElementById('groupB_label').value.trim() || genelistB.replace('|', '');
                     labelConvert['list_c'] = document.getElementById('groupC_label').value.trim() || genelistC.replace('|', '');
+                    labelConvert['list_d'] = document.getElementById('groupD_label').value.trim() || genelistC.replace('|', '');
 
                     var sets = []
-                    let labels = ['list_a', 'list_b', 'list_c']
+                    let labels = ['list_a', 'list_b', 'list_c', 'list_d']
                     for(i in labels){
                         let label_i = labels[i]
                         sets.push({sets:[labelConvert[label_i]], size:data[label_i].length})
@@ -204,9 +238,9 @@
                             }
                         }
                     }
-                    var all_data = [data['list_a'], data['list_b'], data['list_c']];
+                    var all_data = [data['list_a'], data['list_b'], data['list_c'], data['list_d']];
                     var common_genes = all_data.reduce((a, b) => a.filter(c => b.includes(c)));
-                    sets.push({sets:[labelConvert['list_a'], labelConvert['list_b'], labelConvert['list_c']], size:common_genes.length})
+                    sets.push({sets:[labelConvert['list_a'], labelConvert['list_b'], labelConvert['list_c'], labelConvert['list_d']], size:common_genes.length})
 
                     //var sets = [ {sets: ['A'], size: data['list_a'].length},
                     //         {sets: ['B'], size: data['list_a'].length},

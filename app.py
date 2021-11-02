@@ -82,14 +82,15 @@ def setops():
     return render_template('setops.html', data=file_list)
 
 
-@app.route("/preview/<groupA>/<groupB>/<groupC>/<operation>")
-def preview(groupA, groupB, groupC, operation):
+@app.route("/preview/<groupA>/<groupB>/<groupC>/<groupD>/<operation>")
+def preview(groupA, groupB, groupC, groupD, operation):
     id_sets = process_instance.prepIdSets()
     set_a = process_instance.getGeneListInLocusName(groupA.replace('|', ''), id_sets) if groupA != '|' else []
     set_b = process_instance.getGeneListInLocusName(groupB.replace('|', ''), id_sets) if groupB != '|' else []
     set_c = process_instance.getGeneListInLocusName(groupC.replace('|', ''), id_sets) if groupC != '|' else []
-    output = process_instance.applyOperation(set_a, set_b, set_c, operation)
-    return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b), 'list_c':list(set_c)})
+    set_d = process_instance.getGeneListInLocusName(groupD.replace('|', ''), id_sets) if groupD != '|' else []
+    output = process_instance.applyOperation(set_a, set_b, set_c, set_d, operation)
+    return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b), 'list_c':list(set_c), 'list_d':list(set_cd})
 
 
 @app.route("/plot")
