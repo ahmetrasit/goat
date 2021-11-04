@@ -90,7 +90,7 @@ def preview(groupA, groupB, groupC, groupD, operation):
     set_c = process_instance.getGeneListInLocusName(groupC.replace('|', ''), id_sets) if groupC != '|' else []
     set_d = process_instance.getGeneListInLocusName(groupD.replace('|', ''), id_sets) if groupD != '|' else []
     output = process_instance.applyOperation(set_a, set_b, set_c, set_d, operation)
-    return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b), 'list_c':list(set_c), 'list_d':list(set_cd})
+    return jsonify({'output':list(output), 'list_a':list(set_a), 'list_b':list(set_b), 'list_c':list(set_c), 'list_d':list(set_d)})
 
 
 @app.route("/plot")

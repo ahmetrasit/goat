@@ -363,7 +363,7 @@ class Process:
             if common > curr_max:
                 curr_max = common
                 found_type = curr_type
-        print('>>>', found_type.split('2')[0], curr_max, gene_set)
+        #print('>>>', found_type.split('2')[0], curr_max, gene_set)
         return found_type.split('2')[0], 100*curr_max//len(gene_set)
 
 

@@ -33,7 +33,11 @@
         <input type="hidden" id="input_groupD" name="groupD" value="">
 
         <div class="rules"></div>
-        <div id="venn_chart"></div>
+        <div class="row">
+            <div id="venn_chart" class="col-md-6"></div>
+            <div id="four-chart" class="col-md-6"></div>
+            <div id="temp-info"></div>
+        </div>
         <div class="input-group mt-3">
             <span class="input-group-text">Give a name to save</span>
             <input type="text" name="save">
@@ -43,15 +47,31 @@
     </form>
 
     <a class="mt-5 h4" href="discover">Alternatively, explore origins of a gene list</a>
+
+
+    <!-- List of genes in selected category -->
+    <div class="modal fade" id="selectedGenesModal" tabindex="-1" role="dialog" aria-labelledby="selectedGenesModal" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="selected_genes_title">Gene List</h5>
+          </div>
+          <div class="modal-body" id="selected_genes_body">
+          </div>
+        </div>
+      </div>
+    </div>
+
 {% endblock %}
 {% block afterbody %}
     <script src="{{ url_for('static', filename='venn.js') }}"></script>
 
     <script>
-        console.log('setops', 17)
+        console.log('setops', 32)
 
 
         let ruleGroups = [];
+        let venn_data = {}
 
         function addRuleGroup(){
             ruleGroups.push(0)
@@ -146,6 +166,14 @@
             return data_select;
         }
 
+        function showGeneList(m,d){
+            d3.select('#selected_genes_title').html(venn_data[d.name].length + ' genes:')
+            let body_content = venn_data[d.name].length>0 ? venn_data[d.name].join(', ') : 'No genes in selected category.'
+            d3.select('#selected_genes_body').html(body_content)
+
+            $('#selectedGenesModal').modal('show')
+        }
+
         function previewOperation(rule_id){
             if(selectedGroups['A'] && selectedGroups['B']){
                 let genelistA = d3.select('#groupA').html()+'|'
@@ -162,6 +190,7 @@
                     d3.select('#groupBminusA_gene_count').html(data['list_b'].filter(gene=>!data['list_a'].includes(gene)).length)
                     d3.select('#operation_output').html(data['output'].length)
 
+                    venn_data = {}
 
                     let AorBorCorD = [...data['list_a'], ...data['list_b'], ...data['list_c'], ...data['list_d']];
                     let AorB = [...data['list_a'], ...data['list_b']];
@@ -180,38 +209,41 @@
                     let AaD = data['list_a'].filter(gene=>data['list_d'].includes(gene));
                     let BaD = data['list_b'].filter(gene=>data['list_d'].includes(gene));
                     let CaD = data['list_c'].filter(gene=>data['list_d'].includes(gene));
-                    let AaCmB = AaC.filter(gene=>!data['list_b'].includes(gene));
-                    let BaCmA = BaC.filter(gene=>!data['list_a'].includes(gene));
 
-                    let AmBorCorD = data['list_a'].filter(gene=>!BorCorD.includes(gene));
-                    let BmAorCorD = data['list_b'].filter(gene=>!AorCorD.includes(gene));
-                    let CmAorBorD = data['list_c'].filter(gene=>!AorBorD.includes(gene));
-                    let DmAorBorC = data['list_d'].filter(gene=>!AorBorC.includes(gene));
+
+                    venn_data['AmBorCorD'] = data['list_a'].filter(gene=>!BorCorD.includes(gene));
+                    venn_data['BmAorCorD'] = data['list_b'].filter(gene=>!AorCorD.includes(gene));
+                    venn_data['CmAorBorD'] = data['list_c'].filter(gene=>!AorBorD.includes(gene));
+                    venn_data['DmAorBorC'] = data['list_d'].filter(gene=>!AorBorC.includes(gene));
 
                     let AaBaC = AaB.filter(gene=>BaC.includes(gene));
                     let AaBaD = AaB.filter(gene=>BaD.includes(gene));
                     let AaCaD = AaC.filter(gene=>CaD.includes(gene));
                     let BaCaD = BaC.filter(gene=>CaD.includes(gene));
 
-                    let AaBmCorD = AaB.filter(gene=>!CorD.includes(gene));
-                    let AaCmBorD = AaC.filter(gene=>!BorD.includes(gene));
-                    let AaDmBorC = AaD.filter(gene=>!BorC.includes(gene));
-                    let BaCmAorD = BaC.filter(gene=>!AorD.includes(gene));
-                    let BaDmAorC = BaD.filter(gene=>!AorC.includes(gene));
-                    let CaDmAorB = CaD.filter(gene=>!AorB.includes(gene));
+                    let AaBmC = AaB.filter(gene=>!data['list_c'].includes(gene));
+                    let BaCmA = BaC.filter(gene=>!data['list_a'].includes(gene));
+                    let AaCmB = AaC.filter(gene=>!data['list_b'].includes(gene));
 
-                    let AaBaCmD = AaBaC.filter(gene=>!data['list_d'].includes(gene));
-                    let AaBaDmC = AaC.filter(gene=>!data['list_c'].includes(gene));
-                    let AaCaDmB = AaD.filter(gene=>!data['list_b'].includes(gene));
-                    let BaCaDmA = BaC.filter(gene=>!data['list_a'].includes(gene));
+                    venn_data['AaBmCorD'] = AaB.filter(gene=>!CorD.includes(gene));
+                    venn_data['AaCmBorD'] = AaC.filter(gene=>!BorD.includes(gene));
+                    venn_data['AaDmBorC'] = AaD.filter(gene=>!BorC.includes(gene));
+                    venn_data['BaCmAorD'] = BaC.filter(gene=>!AorD.includes(gene));
+                    venn_data['BaDmAorC'] = BaD.filter(gene=>!AorC.includes(gene));
+                    venn_data['CaDmAorB'] = CaD.filter(gene=>!AorB.includes(gene));
 
-                    let AaBaCaD = AaB.filter(gene=>CaD.includes(gene));
+                    venn_data['AaBaCmD'] = AaBaC.filter(gene=>!data['list_d'].includes(gene));
+                    venn_data['AaBaDmC'] = AaBaD.filter(gene=>!data['list_c'].includes(gene));
+                    venn_data['AaCaDmB'] = AaCaD.filter(gene=>!data['list_b'].includes(gene));
+                    venn_data['BaCaDmA'] = BaCaD.filter(gene=>!data['list_a'].includes(gene));
+
+                    venn_data['AaBaCaD'] = AaB.filter(gene=>CaD.includes(gene));
 
 
                     d3.select('#AorBorC').html(AorBorC.length)
-                    d3.select('#AmBorC').html(AmBorC.length)
-                    d3.select('#BmAorC').html(BmAorC.length)
-                    d3.select('#CmAorB').html(CmAorB.length)
+                    d3.select('#AmBorC').html(venn_data['AmBorCorD'].length)
+                    d3.select('#BmAorC').html(venn_data['BmAorCorD'].length)
+                    d3.select('#CmAorB').html(venn_data['CmAorBorD'].length)
                     d3.select('#AaBaC').html(AaBaC.length)
                     d3.select('#AaBmC').html(AaBmC.length)
                     d3.select('#AaCmB').html(AaCmB.length)
@@ -224,7 +256,7 @@
                     labelConvert['list_a'] = document.getElementById('groupA_label').value.trim() || genelistA.replace('|', '');
                     labelConvert['list_b'] = document.getElementById('groupB_label').value.trim() || genelistB.replace('|', '');
                     labelConvert['list_c'] = document.getElementById('groupC_label').value.trim() || genelistC.replace('|', '');
-                    labelConvert['list_d'] = document.getElementById('groupD_label').value.trim() || genelistC.replace('|', '');
+                    labelConvert['list_d'] = document.getElementById('groupD_label').value.trim() || genelistD.replace('|', '');
 
                     var sets = []
                     let labels = ['list_a', 'list_b', 'list_c', 'list_d']
@@ -236,22 +268,99 @@
                             if(j>i){
                                 sets.push({sets:[labelConvert[label_i], labelConvert[label_j]], size:data[label_i].filter(gene=>data[label_j].includes(gene)).length})
                             }
+                            for(k in labels){
+                                let label_k = labels[k]
+                                if(k>j){
+                                    sets.push({sets:[labelConvert[label_i], labelConvert[label_j], labelConvert[label_k]], size:data[label_i].filter(gene=>data[label_j].includes(gene)).filter(gene=>data[label_k].includes(gene)).length})
+                                }
+                            }
                         }
                     }
+
                     var all_data = [data['list_a'], data['list_b'], data['list_c'], data['list_d']];
                     var common_genes = all_data.reduce((a, b) => a.filter(c => b.includes(c)));
+                    console.log(common_genes.length)
                     sets.push({sets:[labelConvert['list_a'], labelConvert['list_b'], labelConvert['list_c'], labelConvert['list_d']], size:common_genes.length})
-
+                    console.log(sets)
                     //var sets = [ {sets: ['A'], size: data['list_a'].length},
                     //         {sets: ['B'], size: data['list_a'].length},
                     //         {sets: ['A','B'], size: 2500}];
-                    d3.select('svg').remove()
+                    d3.selectAll('svg').remove()
+
+                    function showCoor(d,i){
+                        //console.log(d.offsetX, d.offsetY);
+                        //d3.select('#temp-info').html(d.offsetX + ', ' +  d.offsetY)
+                    }
+
+                    let svg4 = d3.select('#four-chart').append('svg').on('click', showCoor)
+                        .attr('class', 'four-chart')
+                        .attr('width', 500)
+                        .attr('height', 400)
+                        //.style('background-color', 'ivory')
+
+                    const ellipses = [
+                        {"cx": 165, "cy": 210, "rx": 180, "ry": 80, 'color':'#2E86C1', 'angle':45},
+                        {"cx": 335, "cy": 210, "rx": 180, "ry": 80, 'color':'#E67E22', 'angle':135},
+                        {"cx": 215, "cy": 170, "rx": 180, "ry": 75, 'color':'#52BE80', 'angle':45},
+                        {"cx": 285, "cy": 170, "rx": 180, "ry": 75, 'color':'#AF7AC5', 'angle':135}
+                        ];
+
+                    const region_genes = [
+                        {'pos':[87, 190], 'name':'AmBorCorD'},
+                        {'pos':[412, 190], 'name':'BmAorCorD'},
+                        {'pos':[172, 78], 'name':'CmAorBorD'},
+                        {'pos':[331, 78], 'name':'DmAorBorC'},
+                        {'pos':[252, 321], 'name':'AaBmCorD'},
+                        {'pos':[145, 140], 'name':'AaCmBorD'},
+                        {'pos':[177, 270], 'name':'AaDmBorC'},
+                        {'pos':[327, 270], 'name':'BaCmAorD'},
+                        {'pos':[353, 140], 'name':'BaDmAorC'},
+                        {'pos':[249, 140], 'name':'CaDmAorB'},
+                        {'pos':[284, 285], 'name':'AaBaCmD'},
+                        {'pos':[214, 286], 'name':'AaBaDmC'},
+                        {'pos':[207, 200], 'name':'AaCaDmB'},
+                        {'pos':[294, 200], 'name':'BaCaDmA'},
+                        {'pos':[250, 244], 'name':'AaBaCaD'},
+                    ]
+
+                    svg4.selectAll("ellipse").data(ellipses).enter()
+                        .append("ellipse")
+                            .attr("cx", (d,i) => { return d.cx; })
+                            .attr("cy", (d,i) => { return d.cy; })
+                            .attr("rx", (d,i) => { return d.rx; })
+                            .attr("ry", (d,i) => { return d.ry; })
+                            .style('opacity', .3)
+                            .style('fill', (d,i)=>{return d.color})
+                            .style('stroke-width', '10px')
+                            .style('stroke-opacity', .8)
+                            .attr("transform", (d,i) => { return 'rotate('+ [d.angle, d.cx, d.cy].join(',') +')'; });
+
+                    svg4.selectAll('text.count').data(region_genes).enter()
+                        .append('text').attr('class', 'count').on('click', showGeneList)
+                            .attr('x', (d,i) => { return d.pos[0]; })
+                            .attr('y', (d,i) => { return d.pos[1]; })
+                            .text((d,i) => { console.log(d.name, venn_data[d.name].length); return venn_data[d.name].length; })
+                            .attr('text-anchor', 'middle')
+
+                    const set_names = [
+                        {label:labelConvert['list_a'], pos:[40, 366], align:'start', 'color':'#2E86C1'},
+                        {label:labelConvert['list_b'], pos:[473, 366], align:'end', 'color':'#E67E22'},
+                        {label:labelConvert['list_c'], pos:[30, 20], align:'start', 'color':'#52BE80'},
+                        {label:labelConvert['list_d'], pos:[460, 20], align:'end', 'color':'#AF7AC5'},
+                    ]
+
+                    svg4.selectAll('text.label').data(set_names).enter()
+                        .append('text').attr('class', 'label')
+                            .attr('x', (d,i) => { return d.pos[0]; })
+                            .attr('y', (d,i) => { return d.pos[1]; })
+                            .text((d,i) => { return d.label })
+                            .attr('text-anchor', (d,i) => d.align)
+                            .style('font-weight', 'bold')
+                            .style('fill', (d,i) => d.color)
 
                     var chart = venn.VennDiagram()
                         .width(500)
                         .height(400)
-
-
 
                     var div = d3.select("#venn_chart").datum(sets).call(chart);
                         div.selectAll("text").style("fill", "black");
@@ -294,15 +403,10 @@
                                 .style("fill-opacity", d.sets.length === 1 ? .25 : .0)
                                 .style("stroke-opacity", 0);
                         });
-
-
                 })
             }else{
                 alert('Please choose gene sets for both Group A and Group B')
             }
-
-
-
         }
 
         function updateRuleInput(){
