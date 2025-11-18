@@ -13,15 +13,17 @@ class Process:
     def setops(self, formdata):
         groupA = formdata['groupA']
         groupB = formdata['groupB']
-        groupC = formdata['groupC']
+        groupC = formdata.get('groupC', '')
+        groupD = formdata.get('groupD', '')
         operation = formdata['hidden_operation']
         save_filename = escape(formdata['save']).replace('\s', '_')
         id_sets = self.prepIdSets()
         set_a = self.getGeneListInLocusName(groupA, id_sets)
         set_b = self.getGeneListInLocusName(groupB, id_sets)
-        set_c = self.getGeneListInLocusName(groupC, id_sets) if groupC else []
+        set_c = self.getGeneListInLocusName(groupC, id_sets) if groupC else set()
+        set_d = self.getGeneListInLocusName(groupD, id_sets) if groupD else set()
         print('>>', operation)
-        output = self.applyOperation(set_a, set_b, set_c, operation)
+        output = self.applyOperation(set_a, set_b, set_c, set_d, operation)
         if output:
             saved_filename = self.saveFile(f'data/genelist/{save_filename}.json', list(output))
             return '', f'Genelist saved as "{saved_filename}", having {len(output)} genes.'
@@ -403,25 +405,54 @@ class Process:
 
 
     def saveFile(self, filename, data):
-        print(filename)
-        filename = re.sub('.json$', '', filename)
-        *folder_fields, file = filename.split('/')
-        folder = os.path.join(*folder_fields)
-        file = escape(file)
-        file = re.sub(r'[^\w\s-]', '', file.lower())
-        file = re.sub(r'[-\s]+', '-', file).strip('-_')
-        print(file)
-        file_path = os.path.join(folder, file) + '.json'
-        print('>FP', file_path)
-        while os.path.isfile(file_path):
-            file = re.sub('.json$', '', file)
-            file += '_1'
-            file += '.json'
-            file_path = os.path.join(folder, file)
-        print('>FP2', file_path)
-        with open(file_path, 'w') as f:
-            json.dump(data, f)
-        return f'{file}'
+        """
+        Save data to JSON file with proper error handling and unique naming
+
+        Args:
+            filename: Desired filename (will be sanitized)
+            data: Data to save
+
+        Returns:
+            str: Actual filename used (without extension)
+
+        Raises:
+            RuntimeError: If file cannot be saved after multiple attempts
+        """
+        import logging
+        from utils import sanitize_filename, safe_save_json, get_unique_filename
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Remove .json extension if present
+            filename = re.sub(r'\.json$', '', filename)
+
+            # Split into folder and file
+            *folder_fields, file = filename.split('/')
+            folder = os.path.join(*folder_fields)
+
+            # Sanitize filename
+            file = sanitize_filename(file)
+
+            # Ensure directory exists
+            os.makedirs(folder, exist_ok=True)
+
+            # Get unique filename with proper counter
+            base_path = os.path.join(folder, file)
+            unique_path = get_unique_filename(base_path, '.json')
+
+            # Save file with error handling
+            if safe_save_json(unique_path, data):
+                # Return just the filename without extension
+                saved_file = os.path.basename(unique_path).replace('.json', '')
+                logger.info(f"Saved file: {unique_path}")
+                return saved_file
+            else:
+                raise RuntimeError(f"Failed to save file: {unique_path}")
+
+        except Exception as e:
+            logger.error(f"Error saving file {filename}: {e}")
+            raise
 
 
     def getGeneListInLocusName(self, selected_gene_set_name, id_sets):
@@ -436,6 +467,62 @@ class Process:
             return set([])
 
     def applyOperation(self, set_a, set_b, set_c, set_d, operation):
-        operations = {'and': set_a & set_b, 'or': set_a | set_b, 'a-b': set_a - set_b, 'b-a': set_b - set_a}
-        return operations[operation]
+        """
+        Perform set operations on 2-4 gene sets.
+
+        Supported operations:
+        - 2-way: 'and' (∩), 'or' (∪), 'a-b' (A-B), 'b-a' (B-A)
+        - 3-way: 'abc-and' (A∩B∩C), 'abc-or' (A∪B∪C), etc.
+        - 4-way: 'abcd-and' (A∩B∩C∩D), 'abcd-or' (A∪B∪C∪D), etc.
+
+        Args:
+            set_a, set_b, set_c, set_d: Gene sets (set_c and set_d may be empty)
+            operation: String specifying the operation
+
+        Returns:
+            set: Result of the operation
+        """
+        # Ensure all inputs are sets
+        set_a = set(set_a) if set_a else set()
+        set_b = set(set_b) if set_b else set()
+        set_c = set(set_c) if set_c else set()
+        set_d = set(set_d) if set_d else set()
+
+        # 2-way operations (original functionality)
+        operations = {
+            'and': set_a & set_b,
+            'or': set_a | set_b,
+            'a-b': set_a - set_b,
+            'b-a': set_b - set_a,
+        }
+
+        # 3-way operations
+        if set_c:
+            operations.update({
+                'abc-and': set_a & set_b & set_c,
+                'abc-or': set_a | set_b | set_c,
+                'ab-c': (set_a & set_b) - set_c,
+                'ac-b': (set_a & set_c) - set_b,
+                'bc-a': (set_b & set_c) - set_a,
+                'a-bc': set_a - (set_b | set_c),
+                'b-ac': set_b - (set_a | set_c),
+                'c-ab': set_c - (set_a | set_b),
+            })
+
+        # 4-way operations
+        if set_d:
+            operations.update({
+                'abcd-and': set_a & set_b & set_c & set_d,
+                'abcd-or': set_a | set_b | set_c | set_d,
+                'abc-d': (set_a & set_b & set_c) - set_d,
+                'abd-c': (set_a & set_b & set_d) - set_c,
+                'acd-b': (set_a & set_c & set_d) - set_b,
+                'bcd-a': (set_b & set_c & set_d) - set_a,
+                'a-bcd': set_a - (set_b | set_c | set_d),
+                'b-acd': set_b - (set_a | set_c | set_d),
+                'c-abd': set_c - (set_a | set_b | set_d),
+                'd-abc': set_d - (set_a | set_b | set_c),
+            })
+
+        return operations.get(operation, set())
 

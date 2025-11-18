@@ -1,0 +1,45 @@
+# G.O.A.T (Gene-Oriented Analysis Tool) - Python Dependencies
+# For C. elegans small RNA-seq analysis
+
+# Web Framework
+Flask>=2.3.0,<3.0.0
+Werkzeug>=2.3.0,<3.0.0
+
+# Security and Utilities
+MarkupSafe>=2.1.0
+
+# WSGI Server
+gunicorn>=20.1.0
+
+# Environment Management
+python-dotenv>=1.0.0
+
+# Security Extensions
+Flask-WTF>=1.2.0  # CSRF protection and form handling
+Flask-Limiter>=3.5.0  # Rate limiting
+Flask-CORS>=4.0.0  # CORS support
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0  # Coverage reporting
+pytest-flask>=1.2.0  # Flask-specific test utilities
+
+# Development Tools
+black>=23.7.0  # Code formatter
+flake8>=6.1.0  # Linter
+mypy>=1.5.0  # Type checker
+
+# Note: External bioinformatics tools must be installed separately:
+# - bowtie2 (>= 2.4.0) - Sequence alignment
+# - cutadapt (>= 4.0) - Adapter trimming
+# - samtools (>= 1.15) - SAM/BAM manipulation
+# - hisat2 (>= 2.2.0) - RNA-seq alignment for JBrowse
+# - bedtools (>= 2.30.0) - Genomic interval operations
+# - UCSC tools:
+#   - wigToBigWig - Wig to BigWig conversion
+#   - genomeCoverageBed - Coverage calculation
+
+# Optional: Advanced Features
+# redis>=4.6.0  # For distributed rate limiting in production
+# celery>=5.3.0  # Async task processing
+# SQLAlchemy>=2.0.0  # Database ORM for future migration

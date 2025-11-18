@@ -131,9 +131,10 @@ class Preprocess:
         return str(out), str(err)
 
     def createBamBigWig(self, fi, file, folders, file2alias):
+        from config import UCSC_TOOLS_DIR
         trimmed_file_path = os.path.join(folders['trimmed_folder'], file2alias[file]) + '.trimmed.fastq.gz'
         jbrowse_file_prefix = os.path.join(folders['jbrowse_folder'], file2alias[file])
-        jupyter_prep_cmd = ["scripts/jupyter_prep.sh", jbrowse_file_prefix, trimmed_file_path, 'mappers/genome', '/users/ahmetrasit/ucsc-tools']
+        jupyter_prep_cmd = ["scripts/jupyter_prep.sh", jbrowse_file_prefix, trimmed_file_path, 'mappers/genome', str(UCSC_TOOLS_DIR)]
         sp = Popen(jupyter_prep_cmd, stdout=PIPE, stderr=PIPE, shell=False)
         out, err = sp.communicate()
         for curr in [out, err]:
