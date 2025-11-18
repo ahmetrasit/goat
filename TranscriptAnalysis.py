@@ -2,8 +2,15 @@ from collections import Counter
 import os
 import json
 import re
+import logging
 
 class TranscriptAnalysis:
+    """
+    SAM file parsing and small RNA quantification for C. elegans
+
+    Handles alignment parsing, unique/multi-mapper categorization,
+    PPM normalization, and data splitting by length/nucleotide
+    """
     #'s' for sense, 'a' for antisense
     gene2element = {}
     gene2name = {}
@@ -11,14 +18,20 @@ class TranscriptAnalysis:
     trans2pos = {}
     exon2pos = {}
     rest2pos = {}
-    
+
     sam_file = None
     type2parse = {}
     calculateWith = {}
     normalizeBy = {}
-    
+
+    # Pre-compiled regex patterns for performance
+    _TRANSCRIPT_REGEX = re.compile(r'(\w+\.t?\d+)((\.\d+)|([a-z](\.\d+)*))*')
+    _EXON_REGEX = re.compile(r'([^:]+):([^:]+):(.+)')
+    _TRANSPOSON_REGEX = re.compile(r'[^:]+:[^:]+:(.+)')
+
     def __init__(self, sam_file):
         self.sam_file = sam_file
+        self.logger = logging.getLogger(__name__)
         self.type2parse = {
             'PC_EXON':self.parseExon,
             'TRANSPO':self.parseTransposon,
@@ -301,7 +314,16 @@ class TranscriptAnalysis:
     ### Parsing SAM File ###
     
     def getTranscriptGeneName(self, name):
-        match = re.match(r'(\w+\.t?\d+)((\.\d+)|([a-z](\.\d+)*))*', name.split(":")[-1])
+        """
+        Extract gene name from transcript identifier using pre-compiled regex
+
+        Args:
+            name: Transcript identifier
+
+        Returns:
+            str: Gene name or '-' if no match
+        """
+        match = self._TRANSCRIPT_REGEX.match(name.split(":")[-1])
         if match:
             return match.group(1)
         return '-'

@@ -405,25 +405,54 @@ class Process:
 
 
     def saveFile(self, filename, data):
-        print(filename)
-        filename = re.sub('.json$', '', filename)
-        *folder_fields, file = filename.split('/')
-        folder = os.path.join(*folder_fields)
-        file = escape(file)
-        file = re.sub(r'[^\w\s-]', '', file.lower())
-        file = re.sub(r'[-\s]+', '-', file).strip('-_')
-        print(file)
-        file_path = os.path.join(folder, file) + '.json'
-        print('>FP', file_path)
-        while os.path.isfile(file_path):
-            file = re.sub('.json$', '', file)
-            file += '_1'
-            file += '.json'
-            file_path = os.path.join(folder, file)
-        print('>FP2', file_path)
-        with open(file_path, 'w') as f:
-            json.dump(data, f)
-        return f'{file}'
+        """
+        Save data to JSON file with proper error handling and unique naming
+
+        Args:
+            filename: Desired filename (will be sanitized)
+            data: Data to save
+
+        Returns:
+            str: Actual filename used (without extension)
+
+        Raises:
+            RuntimeError: If file cannot be saved after multiple attempts
+        """
+        import logging
+        from utils import sanitize_filename, safe_save_json, get_unique_filename
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Remove .json extension if present
+            filename = re.sub(r'\.json$', '', filename)
+
+            # Split into folder and file
+            *folder_fields, file = filename.split('/')
+            folder = os.path.join(*folder_fields)
+
+            # Sanitize filename
+            file = sanitize_filename(file)
+
+            # Ensure directory exists
+            os.makedirs(folder, exist_ok=True)
+
+            # Get unique filename with proper counter
+            base_path = os.path.join(folder, file)
+            unique_path = get_unique_filename(base_path, '.json')
+
+            # Save file with error handling
+            if safe_save_json(unique_path, data):
+                # Return just the filename without extension
+                saved_file = os.path.basename(unique_path).replace('.json', '')
+                logger.info(f"Saved file: {unique_path}")
+                return saved_file
+            else:
+                raise RuntimeError(f"Failed to save file: {unique_path}")
+
+        except Exception as e:
+            logger.error(f"Error saving file {filename}: {e}")
+            raise
 
 
     def getGeneListInLocusName(self, selected_gene_set_name, id_sets):

@@ -25,6 +25,11 @@ app = Flask(__name__)
 from config import Config
 app.config.from_object(Config)
 
+# Initialize security (CSRF, rate limiting, security headers)
+from security import init_security, apply_rate_limits
+init_security(app)
+apply_rate_limits(app)
+
 
 
 
