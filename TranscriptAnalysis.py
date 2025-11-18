@@ -446,7 +446,24 @@ class TranscriptAnalysis:
 
 
     def filterSeqBySpecies(self, seq_set, len_start, len_end, nt, norm_seq2ppm):
-            filtered = {seq:round(norm_seq2ppm[seq], 4) for seq in seq_set if seq.startswith(nt) and len_start >= len(seq) >= len_end}
+            """
+            Filter sequences by nucleotide type and length range.
+
+            Args:
+                seq_set: Set of sequences to filter
+                len_start: Minimum sequence length (inclusive)
+                len_end: Maximum sequence length (inclusive)
+                nt: Nucleotide type to filter by (A, T, G, or C)
+                norm_seq2ppm: Dictionary mapping sequences to normalized PPM values
+
+            Returns:
+                tuple: (filtered_dict, has_results_bool)
+
+            Note: Fixed logic - was len_start >= len(seq) >= len_end (impossible),
+                  now correctly len_end >= len(seq) >= len_start
+            """
+            filtered = {seq:round(norm_seq2ppm[seq], 4) for seq in seq_set
+                       if seq.startswith(nt) and len_end >= len(seq) >= len_start}
             return filtered, bool(filtered)
 
     def filterGenesBySpecies(self, gene2seq, len_start, len_end, nt, norm_seq2ppm):

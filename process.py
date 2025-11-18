@@ -13,15 +13,17 @@ class Process:
     def setops(self, formdata):
         groupA = formdata['groupA']
         groupB = formdata['groupB']
-        groupC = formdata['groupC']
+        groupC = formdata.get('groupC', '')
+        groupD = formdata.get('groupD', '')
         operation = formdata['hidden_operation']
         save_filename = escape(formdata['save']).replace('\s', '_')
         id_sets = self.prepIdSets()
         set_a = self.getGeneListInLocusName(groupA, id_sets)
         set_b = self.getGeneListInLocusName(groupB, id_sets)
-        set_c = self.getGeneListInLocusName(groupC, id_sets) if groupC else []
+        set_c = self.getGeneListInLocusName(groupC, id_sets) if groupC else set()
+        set_d = self.getGeneListInLocusName(groupD, id_sets) if groupD else set()
         print('>>', operation)
-        output = self.applyOperation(set_a, set_b, set_c, operation)
+        output = self.applyOperation(set_a, set_b, set_c, set_d, operation)
         if output:
             saved_filename = self.saveFile(f'data/genelist/{save_filename}.json', list(output))
             return '', f'Genelist saved as "{saved_filename}", having {len(output)} genes.'
@@ -436,6 +438,62 @@ class Process:
             return set([])
 
     def applyOperation(self, set_a, set_b, set_c, set_d, operation):
-        operations = {'and': set_a & set_b, 'or': set_a | set_b, 'a-b': set_a - set_b, 'b-a': set_b - set_a}
-        return operations[operation]
+        """
+        Perform set operations on 2-4 gene sets.
+
+        Supported operations:
+        - 2-way: 'and' (∩), 'or' (∪), 'a-b' (A-B), 'b-a' (B-A)
+        - 3-way: 'abc-and' (A∩B∩C), 'abc-or' (A∪B∪C), etc.
+        - 4-way: 'abcd-and' (A∩B∩C∩D), 'abcd-or' (A∪B∪C∪D), etc.
+
+        Args:
+            set_a, set_b, set_c, set_d: Gene sets (set_c and set_d may be empty)
+            operation: String specifying the operation
+
+        Returns:
+            set: Result of the operation
+        """
+        # Ensure all inputs are sets
+        set_a = set(set_a) if set_a else set()
+        set_b = set(set_b) if set_b else set()
+        set_c = set(set_c) if set_c else set()
+        set_d = set(set_d) if set_d else set()
+
+        # 2-way operations (original functionality)
+        operations = {
+            'and': set_a & set_b,
+            'or': set_a | set_b,
+            'a-b': set_a - set_b,
+            'b-a': set_b - set_a,
+        }
+
+        # 3-way operations
+        if set_c:
+            operations.update({
+                'abc-and': set_a & set_b & set_c,
+                'abc-or': set_a | set_b | set_c,
+                'ab-c': (set_a & set_b) - set_c,
+                'ac-b': (set_a & set_c) - set_b,
+                'bc-a': (set_b & set_c) - set_a,
+                'a-bc': set_a - (set_b | set_c),
+                'b-ac': set_b - (set_a | set_c),
+                'c-ab': set_c - (set_a | set_b),
+            })
+
+        # 4-way operations
+        if set_d:
+            operations.update({
+                'abcd-and': set_a & set_b & set_c & set_d,
+                'abcd-or': set_a | set_b | set_c | set_d,
+                'abc-d': (set_a & set_b & set_c) - set_d,
+                'abd-c': (set_a & set_b & set_d) - set_c,
+                'acd-b': (set_a & set_c & set_d) - set_b,
+                'bcd-a': (set_b & set_c & set_d) - set_a,
+                'a-bcd': set_a - (set_b | set_c | set_d),
+                'b-acd': set_b - (set_a | set_c | set_d),
+                'c-abd': set_c - (set_a | set_b | set_d),
+                'd-abc': set_d - (set_a | set_b | set_c),
+            })
+
+        return operations.get(operation, set())
 

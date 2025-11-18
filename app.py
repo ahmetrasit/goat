@@ -20,9 +20,10 @@ import os
 import json
 
 app = Flask(__name__)
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]/kkk'
+# Load configuration
+from config import Config
+app.config.from_object(Config)
 
 
 
@@ -104,8 +105,8 @@ def getDataPair(fileA, fileB, folder):
     def getConverter(data, id_type, converters):
         if id_type == 'name':
             return {gene:gene for gene in data}
-        curr_cunverter = converters[f'{id_type}2name']
-        return {gene:curr_cunverter[gene] if gene in curr_cunverter else gene for gene in data}
+        curr_converter = converters[f'{id_type}2name']
+        return {gene:curr_converter[gene] if gene in curr_converter else gene for gene in data}
 
     pair = []
     data_a = getData(fileA, folder)
